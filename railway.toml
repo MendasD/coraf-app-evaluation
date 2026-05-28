@@ -1,0 +1,12 @@
+# Configuration Railway
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "NIXPACKS"
+# La commande build collecte les fichiers statiques pour WhiteNoise.
+# Les migrations tournent au déploiement via le 'release' du Procfile.
+buildCommand = "python manage.py collectstatic --noinput"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block heading %}{{ titre }}{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-3xl">
+    {% csrf_token %}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+        <h2 class="font-semibold text-slate-900 mb-4 flex items-center gap-2"><i data-lucide="id-card" class="w-4 h-4 text-coraf-700"></i> Informations du collaborateur</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {% for field in form %}
+                {% if field.name == "creer_compte" or field.name == "compte_email" or field.name == "compte_password" %}
+                    {# Affichés dans la section dédiée plus bas #}
+                {% else %}
+                <div class="{% if field.name == 'projets' %}md:col-span-2{% endif %}">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<p class="text-xs text-red-600 mt-1">{{ field.errors|striptags }}</p>{% endif %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-5">
+        <h2 class="font-semibold text-slate-900 mb-1 flex items-center gap-2"><i data-lucide="key-round" class="w-4 h-4 text-coraf-700"></i> Compte d'accès (optionnel)</h2>
+        <p class="text-xs text-slate-500 mb-4">Si vous activez cette option, le collaborateur recevra un compte pour se connecter et remplir lui-même ses parties de chaque évaluation (faits marquants, initiatives personnelles, commentaires).</p>
+
+        <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" name="creer_compte" id="id_creer_compte" class="mt-1" onchange="document.getElementById('compte-fields').style.display = this.checked ? 'block' : 'none'">
+            <div>
+                <div class="text-sm font-medium text-slate-800">{{ form.creer_compte.label }}</div>
+                <div class="text-xs text-slate-500">{{ form.creer_compte.help_text }}</div>
+            </div>
+        </label>
+
+        <div id="compte-fields" class="mt-4 pt-4 border-t border-slate-100" style="display:none">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.compte_email.label }}</label>
+                {{ form.compte_email }}
+                {% if form.compte_email.errors %}<p class="text-xs text-red-600 mt-1">{{ form.compte_email.errors|striptags }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.compte_password.label }}</label>
+                {{ form.compte_password }}
+                {% if form.compte_password.errors %}<p class="text-xs text-red-600 mt-1">{{ form.compte_password.errors|striptags }}</p>{% endif %}
+                <p class="text-xs text-slate-500 mt-1">{{ form.compte_password.help_text }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-5 flex gap-3">
+        <button type="submit" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition">
+            <i data-lucide="save" class="w-4 h-4"></i> Enregistrer
+        </button>
+        <a href="{% url 'evaluations:collaborateur_list' %}" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Annuler</a>
+    </div>
+</form>
+{% endblock %}

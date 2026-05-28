@@ -1,0 +1,167 @@
+{% load static %}
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#3f7723">
+    <title>{% block title %}Évaluation des performances · CORAF{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen lg:flex">
+
+    <div class="sb-backdrop" onclick="document.body.classList.remove('sb-open')"></div>
+
+    <aside class="sidebar w-64 shrink-0 bg-gradient-to-b from-coraf-800 to-coraf-900 text-coraf-50 flex flex-col z-50 lg:sticky lg:top-0 lg:h-screen">
+        <div class="px-4 py-5 flex items-center gap-3 border-b border-white/10">
+            <div class="h-10 w-10 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm">
+                <img src="{% static 'img/logo_coraf.png' %}" alt="CORAF" class="h-8 w-auto">
+            </div>
+            <div class="sb-brand-text leading-tight">
+                <div class="font-bold text-white tracking-tight">CORAF</div>
+                <div class="text-[11px] text-coraf-100/80">Évaluation des performances</div>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            {% url 'evaluations:dashboard' as u_dash %}
+            {% url 'evaluations:collaborateur_list' as u_coll %}
+            {% url 'evaluations:evaluation_create' as u_eval_new %}
+
+            {% if user.profil_collaborateur and not user.is_staff %}
+                {# === Menu réservé aux évalués (non admin) === #}
+                <a href="{{ u_dash }}" class="sb-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i data-lucide="clipboard-list"></i>
+                    <span class="sb-label">Mes évaluations</span>
+                </a>
+            {% else %}
+                {# === Menu évaluateur / admin === #}
+                <a href="{{ u_dash }}" class="sb-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span class="sb-label">Tableau de bord</span>
+                </a>
+                <a href="{{ u_coll }}" class="sb-link {% if 'collaborateur' in request.resolver_match.url_name %}active{% endif %}">
+                    <i data-lucide="users"></i>
+                    <span class="sb-label">Collaborateurs</span>
+                </a>
+                <a href="{{ u_eval_new }}" class="sb-link {% if request.resolver_match.url_name == 'evaluation_create' %}active{% endif %}">
+                    <i data-lucide="clipboard-pen-line"></i>
+                    <span class="sb-label">Nouvelle évaluation</span>
+                </a>
+            {% endif %}
+
+            {% if user.is_authenticated and user.is_staff %}
+            <div class="pt-4 pb-1 px-3 text-[11px] uppercase tracking-wider text-coraf-100/50 sb-section-label">Administration</div>
+            <a href="{% url 'evaluations:admin_utilisateurs' %}" class="sb-link {% if 'admin_util' in request.resolver_match.url_name %}active{% endif %}">
+                <i data-lucide="users-round"></i>
+                <span class="sb-label">Utilisateurs</span>
+            </a>
+            <a href="{% url 'evaluations:admin_catalogue' %}" class="sb-link {% if 'admin_catalogue' in request.resolver_match.url_name or 'admin_objectif' in request.resolver_match.url_name %}active{% endif %}">
+                <i data-lucide="target"></i>
+                <span class="sb-label">Catalogue d'objectifs</span>
+            </a>
+            <a href="{% url 'evaluations:admin_bareme' %}" class="sb-link {% if 'admin_bareme' in request.resolver_match.url_name or 'admin_niveau' in request.resolver_match.url_name %}active{% endif %}">
+                <i data-lucide="sliders-horizontal"></i>
+                <span class="sb-label">Barème d'appréciation</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        {% if user.is_authenticated %}
+        <div class="px-3 py-3 border-t border-white/10 space-y-1">
+            <div class="px-3 py-1.5 text-xs text-coraf-100/70 sb-label truncate">
+                <div class="font-medium text-coraf-50">{{ user.get_full_name|default:user.email }}</div>
+                <div class="text-[11px] text-coraf-100/70 truncate">{{ user.email }}</div>
+                {% if user.is_staff %}
+                    <div class="text-[10px] uppercase tracking-wider text-amber-300/90 mt-0.5">Administrateur</div>
+                {% elif user.profil_collaborateur %}
+                    <div class="text-[10px] uppercase tracking-wider text-coraf-100/80 mt-0.5">Évalué · {{ user.profil_collaborateur.get_type_display }}</div>
+                {% else %}
+                    <div class="text-[10px] uppercase tracking-wider text-coraf-100/60 mt-0.5">Évaluateur</div>
+                {% endif %}
+            </div>
+            <a href="{% url 'password_change' %}" class="sb-link">
+                <i data-lucide="key-round"></i>
+                <span class="sb-label">Mot de passe</span>
+            </a>
+            <form method="post" action="{% url 'logout' %}" class="px-0">
+                {% csrf_token %}
+                <button type="submit" class="sb-link w-full">
+                    <i data-lucide="log-out"></i>
+                    <span class="sb-label">Se déconnecter</span>
+                </button>
+            </form>
+            <button type="button" onclick="toggleSidebar()" class="sb-link w-full text-coraf-100/70 hover:text-white" title="Réduire / déplier">
+                <i data-lucide="panel-left-close" id="sb-toggle-icon"></i>
+                <span class="sb-label">Réduire</span>
+            </button>
+        </div>
+        {% endif %}
+    </aside>
+
+    <div class="flex-1 min-w-0 min-h-screen flex flex-col" id="main-wrap">
+        <header class="topbar sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
+            <div class="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-16">
+                <button type="button" class="lg:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100" onclick="document.body.classList.toggle('sb-open')" aria-label="Menu">
+                    <i data-lucide="menu"></i>
+                </button>
+                <h1 class="text-base sm:text-lg font-semibold text-slate-900 truncate">{% block heading %}{% endblock %}</h1>
+                <div class="ml-auto flex items-center gap-2">
+                    {% block topbar_actions %}{% endblock %}
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] w-full mx-auto">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="mb-4 rounded-xl border px-4 py-3 text-sm flex items-start gap-3
+                    {% if message.tags == 'success' %}bg-coraf-50 border-coraf-200 text-coraf-800
+                    {% elif message.tags == 'error' %}bg-red-50 border-red-200 text-red-800
+                    {% else %}bg-amber-50 border-amber-200 text-amber-800{% endif %}">
+                    <i data-lucide="{% if message.tags == 'success' %}check-circle-2{% elif message.tags == 'error' %}x-circle{% else %}info{% endif %}" class="mt-0.5"></i>
+                    <span class="flex-1">{{ message }}</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+      function toggleSidebar() {
+        const collapsed = document.body.classList.toggle('sb-collapsed');
+        localStorage.setItem('sb-collapsed', collapsed ? '1' : '0');
+        // Echange l'icône
+        const icon = document.getElementById('sb-toggle-icon');
+        if (icon) {
+          icon.setAttribute('data-lucide', collapsed ? 'panel-left-open' : 'panel-left-close');
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+      // Restaurer l'état au chargement
+      if (localStorage.getItem('sb-collapsed') === '1') {
+        document.body.classList.add('sb-collapsed');
+      }
+      window.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide) lucide.createIcons();
+        const icon = document.getElementById('sb-toggle-icon');
+        if (icon && document.body.classList.contains('sb-collapsed')) {
+          icon.setAttribute('data-lucide', 'panel-left-open');
+          if (window.lucide) lucide.createIcons();
+        }
+      });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

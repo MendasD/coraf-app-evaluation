@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block heading %}Collaborateurs{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'evaluations:collaborateur_create' %}" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+    <i data-lucide="user-plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Nouveau collaborateur</span><span class="sm:hidden">Nouveau</span>
+</a>
+{% endblock %}
+
+{% block content %}
+{% if collaborateurs %}
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    {% for c in collaborateurs %}
+    <a href="{{ c.get_absolute_url }}" class="group bg-white rounded-2xl border border-slate-200 shadow-card hover:shadow-elevated hover:border-coraf-200 p-5 transition">
+        <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-coraf-400 to-coraf-700 text-white flex items-center justify-center font-semibold shrink-0">
+                {{ c.nom|first|upper }}{{ c.prenom|first|upper }}
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="font-semibold text-slate-900 group-hover:text-coraf-700 transition truncate">{{ c.nom_complet }}</div>
+                <div class="text-sm text-slate-500 truncate">{{ c.poste|default:"Poste non renseigné" }}</div>
+                <div class="text-xs text-slate-400 truncate">{{ c.direction|default:"" }}</div>
+            </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 text-slate-600 font-medium">{{ c.get_type_display }}</span>
+            <span class="text-slate-500"><span class="font-semibold text-slate-900">{{ c.nb_eval }}</span> évaluation{{ c.nb_eval|pluralize }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+    <i data-lucide="users" class="w-10 h-10 mx-auto text-slate-300 mb-3"></i>
+    <div class="text-slate-500 mb-4">Aucun collaborateur enregistré pour le moment.</div>
+    <a href="{% url 'evaluations:collaborateur_create' %}" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3.5 py-2 rounded-lg">
+        <i data-lucide="user-plus" class="w-4 h-4"></i> Ajouter le premier
+    </a>
+</div>
+{% endif %}
+{% endblock %}

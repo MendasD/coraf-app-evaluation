@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block heading %}{{ titre }}{% endblock %}
+
+{% block content %}
+{% if not evaluation %}
+{# Bandeau explicatif à la création #}
+<div class="rounded-2xl bg-coraf-50 border border-coraf-200 text-coraf-900 px-4 py-3.5 mb-5 flex items-start gap-3">
+    <i data-lucide="share-2" class="w-5 h-5 mt-0.5 shrink-0 text-coraf-700"></i>
+    <div class="text-sm">
+        <div class="font-semibold">Partage automatique avec l'évalué</div>
+        <p class="text-coraf-800/90 mt-0.5">
+            Dès que vous cliquerez sur <strong>Enregistrer et partager</strong>, l'évalué (s'il a un compte d'accès)
+            pourra se connecter et compléter ses propres parties : <em>faits marquants</em>,
+            <em>initiatives personnelles</em>, <em>commentaires par objectif</em>. Vous verrez ses saisies apparaître
+            dans cette fiche. Quand tout est prêt, vous cliquerez sur <strong>Soumettre</strong> pour verrouiller
+            sa saisie et finaliser l'évaluation.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<form method="post" class="space-y-5 pb-32">
+    {% csrf_token %}
+
+    <!-- IDENTIFICATION (rempli par l'évaluateur) -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+        <h2 class="font-semibold text-slate-900 mb-4 flex items-center gap-2"><i data-lucide="id-card" class="w-4 h-4 text-coraf-700"></i> Identification</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {% for field in form %}
+                {% if field.name == 'collaborateur' or field.name == 'date_evaluation' or field.name == 'responsable_hierarchique' or field.name == 'evaluateur' %}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<p class="text-xs text-red-600 mt-1">{{ field.errors|striptags }}</p>{% endif %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if evaluation %}
+        <div class="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3 flex-wrap text-sm">
+            <span class="text-slate-500">Statut actuel :</span>
+            <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if evaluation.statut == 'VALIDEE' or evaluation.statut == 'VISEE_RH' %}bg-coraf-50 text-coraf-800
+                {% elif evaluation.statut == 'SOUMISE' %}bg-amber-50 text-amber-800
+                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                {{ evaluation.get_statut_display }}
+            </span>
+            <span class="text-xs text-slate-500">Les changements de statut se font depuis la fiche de l'évaluation (boutons Soumettre / Valider / Visa RH).</span>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- SECTIONS REMPLIES PAR L'ÉVALUÉ (lecture seule pour l'évaluateur) -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+        <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
+            <h2 class="font-semibold text-slate-900 flex items-center gap-2">
+                <i data-lucide="user" class="w-4 h-4 text-coraf-600"></i> Parties remplies par l'évalué
+            </h2>
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+                <i data-lucide="lock" class="w-3 h-3"></i> Lecture seule
+            </span>
+        </div>
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.faits_marquants.label }}</label>
+                {{ form.faits_marquants }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.initiatives_personnelles.label }}</label>
+                {{ form.initiatives_personnelles }}
+            </div>
+        </div>
+    </section>
+
+    <!-- BILAN DES OBJECTIFS -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <h2 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="target" class="w-4 h-4 text-coraf-700"></i> Bilan des objectifs</h2>
+            <button type="button" onclick="addObjectifRow()" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3 py-1.5 rounded-lg shadow-sm transition">
+                <i data-lucide="plus" class="w-4 h-4"></i> Ajouter un objectif
+            </button>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">Le titre, la description, les livrables et le coefficient proviennent du catalogue et ne sont pas modifiables. Vous remplissez le <strong>taux d'atteinte</strong> et votre <strong>commentaire d'évaluateur</strong>. Le commentaire de l'évalué (à droite) est rempli par l'intéressé(e).</p>
+
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}<p class="text-xs text-red-600 mb-2">{{ formset.non_form_errors|striptags }}</p>{% endif %}
+
+        <div id="objectifs-body" class="space-y-4">
+            {% for f in formset %}
+            <div class="objectif-row border border-slate-200 rounded-xl p-4 sm:p-5 bg-slate-50/30 transition">
+                {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                <div class="grid grid-cols-12 gap-3">
+                    <div class="col-span-3 sm:col-span-1">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">N°</label>
+                        {{ f.numero }}
+                    </div>
+                    <div class="col-span-9 sm:col-span-11">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Titre (catalogue)</label>
+                        {{ f.titre }}
+                    </div>
+                    <div class="col-span-12">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Description de l'objectif (catalogue)</label>
+                        {{ f.description }}
+                    </div>
+                    <div class="col-span-12 lg:col-span-6">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Livrables (catalogue)</label>
+                        {{ f.livrables }}
+                    </div>
+                    <div class="col-span-6 lg:col-span-3">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Coefficient (catalogue)</label>
+                        {{ f.coefficient }}
+                    </div>
+                    <div class="col-span-6 lg:col-span-3">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-coraf-700 mb-1">Taux d'atteinte (%) <span class="text-red-500">*</span></label>
+                        {{ f.taux_atteinte }}
+                    </div>
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1 flex items-center gap-1.5"><i data-lucide="lock" class="w-3 h-3"></i> Commentaire de l'évalué</label>
+                        {{ f.commentaire_evalue }}
+                    </div>
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-coraf-700 mb-1">Votre commentaire d'évaluateur</label>
+                        {{ f.commentaire_evaluateur }}
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between flex-wrap gap-2">
+                    <span class="text-xs text-slate-500">Note de l'objectif : <span class="font-bold text-coraf-700 text-sm row-note">0.00</span></span>
+                    <label class="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 cursor-pointer">
+                        {{ f.DELETE }} <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Retirer
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <template id="empty-form">
+            <div class="objectif-row border border-slate-200 rounded-xl p-4 sm:p-5 bg-slate-50/30 transition">
+                <div class="grid grid-cols-12 gap-3">
+                    <div class="col-span-3 sm:col-span-1">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">N°</label>
+                        {{ formset.empty_form.numero }}
+                    </div>
+                    <div class="col-span-9 sm:col-span-11">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Titre</label>
+                        {{ formset.empty_form.titre }}
+                    </div>
+                    <div class="col-span-12">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Description</label>
+                        {{ formset.empty_form.description }}
+                    </div>
+                    <div class="col-span-12 lg:col-span-6">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Livrables</label>
+                        {{ formset.empty_form.livrables }}
+                    </div>
+                    <div class="col-span-6 lg:col-span-3">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Coefficient</label>
+                        {{ formset.empty_form.coefficient }}
+                    </div>
+                    <div class="col-span-6 lg:col-span-3">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-coraf-700 mb-1">Taux d'atteinte (%)</label>
+                        {{ formset.empty_form.taux_atteinte }}
+                    </div>
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1 flex items-center gap-1.5"><i data-lucide="lock" class="w-3 h-3"></i> Commentaire de l'évalué</label>
+                        {{ formset.empty_form.commentaire_evalue }}
+                    </div>
+                    <div class="col-span-12 md:col-span-6">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-coraf-700 mb-1">Votre commentaire d'évaluateur</label>
+                        {{ formset.empty_form.commentaire_evaluateur }}
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between flex-wrap gap-2">
+                    <span class="text-xs text-slate-500">Note de l'objectif : <span class="font-bold text-coraf-700 text-sm row-note">0.00</span></span>
+                    <label class="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 cursor-pointer">
+                        {{ formset.empty_form.DELETE }} <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Retirer
+                    </label>
+                </div>
+            </div>
+        </template>
+    </section>
+
+    <!-- APPRÉCIATION GLOBALE DE L'ÉVALUATEUR -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+        <h2 class="font-semibold text-slate-900 mb-4 flex items-center gap-2"><i data-lucide="user-check" class="w-4 h-4 text-coraf-700"></i> Votre appréciation globale</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.points_satisfaction.label }}</label>
+                {{ form.points_satisfaction }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.points_amelioration.label }}</label>
+                {{ form.points_amelioration }}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.propositions_evaluateur.label }}</label>
+                {{ form.propositions_evaluateur }}
+            </div>
+        </div>
+    </section>
+
+    <!-- BANDEAU INFÉRIEUR : note + bouton -->
+    <div class="fixed bottom-4 inset-x-4 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:max-w-2xl lg:ml-auto z-40 no-print">
+        <div class="bg-gradient-to-r from-coraf-700 to-coraf-800 text-white rounded-2xl shadow-elevated p-4 sm:p-5 flex items-center gap-4 flex-wrap">
+            <div class="flex-1 min-w-0">
+                <div class="text-[11px] uppercase tracking-wider text-coraf-100/80 font-semibold">Taux d'exécution globale</div>
+                <div class="text-2xl sm:text-3xl font-bold leading-tight"><span id="global-note">0.00</span> %</div>
+            </div>
+            <button type="submit" class="inline-flex items-center gap-2 bg-white text-coraf-800 hover:bg-coraf-50 px-4 sm:px-5 py-2.5 rounded-lg font-semibold shadow-sm transition text-sm">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                {% if evaluation %}Enregistrer{% else %}Enregistrer et partager{% endif %}
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function recalcEval() {
+    let sumNote = 0, sumCoef = 0;
+    document.querySelectorAll('#objectifs-body .objectif-row').forEach(row => {
+        const del = row.querySelector('input[type=checkbox][name$="-DELETE"]');
+        if (del && del.checked) {
+            const rn = row.querySelector('.row-note');
+            if (rn) rn.textContent = '0.00';
+            row.style.opacity = '0.45';
+            return;
+        }
+        row.style.opacity = '';
+        const coef = parseFloat(row.querySelector('.coef-input')?.value) || 0;
+        const taux = parseFloat(row.querySelector('.taux-input')?.value) || 0;
+        const rowNote = coef * taux / 100;
+        const rn = row.querySelector('.row-note');
+        if (rn) rn.textContent = rowNote.toFixed(2);
+        sumNote += rowNote;
+        sumCoef += coef;
+    });
+    document.getElementById('global-note').textContent = sumCoef > 0 ? (sumNote / sumCoef * 100).toFixed(2) : '0.00';
+}
+
+function addObjectifRow() {
+    const totalForms = document.querySelector('#id_objectifs-TOTAL_FORMS');
+    const idx = parseInt(totalForms.value);
+    const tpl = document.getElementById('empty-form').innerHTML.replace(/__prefix__/g, idx);
+    const wrap = document.createElement('div');
+    wrap.innerHTML = tpl.trim();
+    document.getElementById('objectifs-body').appendChild(wrap.firstChild);
+    totalForms.value = idx + 1;
+    if (window.lucide) lucide.createIcons();
+    recalcEval();
+}
+
+document.addEventListener('input', (e) => {
+    if (e.target.matches('.coef-input, .taux-input')) recalcEval();
+});
+document.addEventListener('change', (e) => {
+    if (e.target.matches('input[name$="-DELETE"]')) recalcEval();
+});
+document.addEventListener('DOMContentLoaded', recalcEval);
+</script>
+{% endblock %}

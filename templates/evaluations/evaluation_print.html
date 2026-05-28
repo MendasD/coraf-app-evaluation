@@ -1,0 +1,346 @@
+{% load static %}
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Fiche d'évaluation · {{ evaluation.collaborateur.nom_complet }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        @page { size: A4; margin: 14mm 12mm; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; color: #111827; font-size: 10.5pt; margin: 0; background: #f3f4f6; padding: 20px; }
+        .sheet { background: #fff; max-width: 210mm; margin: 0 auto; padding: 12mm; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-radius: 6px; }
+
+        /* Header */
+        .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 2px solid #3f7723; padding-bottom: 10px; margin-bottom: 14px; }
+        .header img { height: 46px; }
+        .header .title { text-align: right; }
+        .header h1 { font-size: 14pt; color: #2a4a17; font-weight: 700; margin: 0; }
+        .header .sub { font-size: 9pt; color: #6b7280; margin-top: 2px; }
+        .header .ref { font-size: 9pt; color: #374151; margin-top: 6px; }
+        .header .ref strong { color: #2a4a17; }
+
+        /* Sections */
+        h2.section { font-size: 10.5pt; color: #2a4a17; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-left: 4px solid #3f7723; padding: 4px 0 4px 9px; margin: 14px 0 8px; background: #f1f8ea; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 9pt; }
+        th, td { border: 1px solid #d1d5db; padding: 5px 7px; vertical-align: top; text-align: left; }
+        th { background: #f1f8ea; color: #2a4a17; font-weight: 600; font-size: 8.5pt; }
+
+        /* Identification */
+        .ident td { padding: 5px 9px; }
+        .ident .lbl { background: #f9fafb; font-weight: 600; width: 32%; color: #374151; }
+
+        /* Objectifs */
+        .obj-table th.num, .obj-table td.num { width: 4%; text-align: center; }
+        .obj-table th.coef, .obj-table td.coef,
+        .obj-table th.taux, .obj-table td.taux,
+        .obj-table th.note, .obj-table td.note { width: 7%; text-align: center; }
+        .obj-table .desc-title { font-weight: 600; color: #111827; }
+        .obj-table .desc-body { color: #4b5563; font-size: 8.5pt; margin-top: 2px; white-space: pre-line; }
+        .obj-table .livrables { color: #6b7280; font-size: 8pt; margin-top: 3px; font-style: italic; }
+        .obj-table tfoot td { background: #f9fafb; font-weight: 700; }
+
+        /* Récap */
+        .summary { display: flex; align-items: stretch; gap: 10px; margin: 10px 0 14px; }
+        .summary .card { flex: 1; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px; background: #f9fafb; }
+        .summary .card .lbl { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 600; }
+        .summary .card .val { font-size: 15pt; font-weight: 700; color: #2a4a17; margin-top: 2px; }
+        .summary .apprec { color: #fff; border-color: transparent; }
+        .summary .apprec .lbl { color: rgba(255,255,255,0.85); }
+        .summary .apprec .val { color: #fff; }
+
+        /* Texte libre */
+        .block { border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 10px; min-height: 32px; font-size: 9pt; color: #374151; white-space: pre-line; background: #fff; }
+        .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .field-label { font-weight: 600; font-size: 8.5pt; color: #374151; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+        .empty-hint { color: #9ca3af; font-style: italic; font-size: 8.5pt; }
+
+        /* Lignes pré-imprimées (sections vides à remplir à la main / plus tard) */
+        .preprint-table th { background: #f9fafb; color: #374151; }
+        .preprint-table td { height: 22px; }
+
+        /* Signatures */
+        .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+        .sign { border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 10px; min-height: 78px; font-size: 8.5pt; color: #374151; }
+        .sign .lbl { font-weight: 600; color: #2a4a17; margin-bottom: 4px; font-size: 9pt; }
+        .sign .meta { font-size: 8pt; color: #6b7280; }
+
+        /* Footer */
+        .footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8pt; color: #9ca3af; text-align: center; }
+
+        /* Bandeau d'actions (écran seulement) */
+        .actions { max-width: 210mm; margin: 0 auto 14px; display: flex; gap: 8px; justify-content: flex-end; }
+        .btn { background: #3f7723; color: #fff; border: 0; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 9.5pt; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn.alt { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+        .btn:hover { opacity: 0.9; }
+
+        @media print {
+            body { background: #fff; padding: 0; }
+            .actions, .no-print { display: none !important; }
+            .sheet { box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }
+            h2.section { break-after: avoid; page-break-after: avoid; }
+            table, .signatures { break-inside: avoid; page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="actions no-print">
+        <a href="{% url 'evaluations:evaluation_detail' evaluation.uuid %}" class="btn alt">← Retour</a>
+        <button class="btn" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+    </div>
+
+    <div class="sheet">
+        <!-- ENTÊTE -->
+        <div class="header">
+            <img src="{% static 'img/logo_coraf.png' %}" alt="CORAF">
+            <div class="title">
+                <h1>Formulaire d'évaluation des performances</h1>
+                <div class="sub">Consultants internes · Stagiaires · Employés</div>
+                <div class="ref"><strong>Date d'évaluation :</strong> {{ evaluation.date_evaluation|date:"d/m/Y" }}</div>
+            </div>
+        </div>
+
+        <!-- 1. IDENTIFICATION -->
+        <h2 class="section">1. Identification de l'évalué</h2>
+        <table class="ident">
+            <tr>
+                <td class="lbl">Nom et prénom</td>
+                <td>{{ evaluation.collaborateur.nom_complet }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Type</td>
+                <td>{{ evaluation.collaborateur.get_type_display }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Intitulé du poste</td>
+                <td>{{ evaluation.collaborateur.poste|default:"Non renseigné" }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Direction</td>
+                <td>{{ evaluation.collaborateur.direction|default:"Non renseigné" }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Projets</td>
+                <td>{{ evaluation.collaborateur.projets|default:"Non renseigné" }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Responsable hiérarchique / point focal</td>
+                <td>{{ evaluation.responsable_hierarchique|default:"Non renseigné" }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Évaluateur</td>
+                <td>{{ evaluation.evaluateur|default:"Non renseigné" }}</td>
+            </tr>
+        </table>
+
+        <!-- 2. PRINCIPAUX FAITS MARQUANTS -->
+        <h2 class="section">2. Principaux faits marquants</h2>
+        {% if evaluation.faits_marquants %}
+        <div class="block">{{ evaluation.faits_marquants }}</div>
+        {% else %}
+        <table class="preprint-table">
+            <thead>
+                <tr>
+                    <th style="width:6%">N°</th>
+                    <th style="width:54%">Faits marquants</th>
+                    <th style="width:40%">Observations</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td></td><td></td></tr>
+                <tr><td>2</td><td></td><td></td></tr>
+                <tr><td>3</td><td></td><td></td></tr>
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- 3. BILAN DES OBJECTIFS -->
+        <h2 class="section">3. Bilan des objectifs</h2>
+        <table class="obj-table">
+            <thead>
+                <tr>
+                    <th class="num">N°</th>
+                    <th>Objectif et description</th>
+                    <th class="coef">Coef.</th>
+                    <th class="taux">Taux (%)</th>
+                    <th class="note">Note</th>
+                    <th>Commentaires</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in objectifs %}
+                <tr>
+                    <td class="num">{{ o.numero }}</td>
+                    <td>
+                        {% if o.titre %}<div class="desc-title">{{ o.titre }}</div>{% endif %}
+                        <div class="desc-body">{{ o.description }}</div>
+                        {% if o.livrables %}<div class="livrables">Livrables : {{ o.livrables }}</div>{% endif %}
+                    </td>
+                    <td class="coef">{{ o.coefficient }}</td>
+                    <td class="taux">{{ o.taux_atteinte }}</td>
+                    <td class="note"><strong>{{ o.note }}</strong></td>
+                    <td>
+                        {% if o.commentaire_evalue %}<div><strong>Évalué :</strong> {{ o.commentaire_evalue }}</div>{% endif %}
+                        {% if o.commentaire_evaluateur %}<div style="margin-top:3px"><strong>Évaluateur :</strong> {{ o.commentaire_evaluateur }}</div>{% endif %}
+                        {% if not o.commentaire_evalue and not o.commentaire_evaluateur %}<span class="empty-hint">Aucun commentaire</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:18px">Aucun objectif renseigné</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if objectifs %}
+            <tfoot>
+                <tr>
+                    <td colspan="2" style="text-align:right">Totaux</td>
+                    <td class="coef">{{ evaluation.total_coefficient }}</td>
+                    <td></td>
+                    <td class="note">{{ evaluation.total_note }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+
+        <!-- Récap note globale + appréciation -->
+        <div class="summary">
+            <div class="card">
+                <div class="lbl">Taux d'exécution globale</div>
+                <div class="val">{% if note is not None %}{{ note }} %{% else %}N/A{% endif %}</div>
+            </div>
+            {% if appreciation %}
+            <div class="card apprec" style="background-color: {{ appreciation.couleur }};">
+                <div class="lbl">Appréciation</div>
+                <div class="val">{{ appreciation.libelle }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 4. FIXATION DES OBJECTIFS FUTURS -->
+        <h2 class="section">4. Fixation des objectifs futurs</h2>
+        <table class="preprint-table">
+            <thead>
+                <tr>
+                    <th style="width:4%">N°</th>
+                    <th style="width:24%">Description de l'objectif</th>
+                    <th style="width:10%">Échéances</th>
+                    <th style="width:7%">Coef.</th>
+                    <th style="width:16%">Livrables</th>
+                    <th style="width:13%">Indicateurs</th>
+                    <th style="width:13%">Ressources</th>
+                    <th style="width:13%">Observations</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>3</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <!-- 5. BILAN DES ACTIONS DE FORMATION -->
+        <h2 class="section">5. Bilan des actions de formation</h2>
+        <table class="preprint-table">
+            <thead>
+                <tr>
+                    <th style="width:4%">N°</th>
+                    <th style="width:20%">Action de formation suivie</th>
+                    <th style="width:16%">Acquis</th>
+                    <th style="width:16%">Mise en œuvre</th>
+                    <th style="width:14%">Résultats</th>
+                    <th style="width:15%">Enseignements</th>
+                    <th style="width:15%">Propositions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>3</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <!-- 6. INITIATIVES PERSONNELLES -->
+        <h2 class="section">6. Initiatives personnelles</h2>
+        {% if evaluation.initiatives_personnelles %}
+        <div class="block">{{ evaluation.initiatives_personnelles }}</div>
+        {% else %}
+        <table class="preprint-table">
+            <thead>
+                <tr>
+                    <th style="width:4%">N°</th>
+                    <th style="width:28%">Initiative</th>
+                    <th style="width:34%">Description</th>
+                    <th style="width:18%">Résultats et apprentissages</th>
+                    <th style="width:16%">Commentaires de l'évaluateur</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>2</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>3</td><td></td><td></td><td></td><td></td></tr>
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- 7. PERSPECTIVES DE CARRIÈRE -->
+        <h2 class="section">7. Perspectives de carrière</h2>
+        <table class="preprint-table">
+            <thead>
+                <tr>
+                    <th style="width:30%">Attentes de l'agent</th>
+                    <th style="width:30%">Justification</th>
+                    <th style="width:20%">Planning ou délais</th>
+                    <th style="width:20%">Avis de l'évaluateur</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td></td><td></td><td></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <!-- 8. APPRÉCIATION GLOBALE -->
+        <h2 class="section">8. Appréciation globale par l'évaluateur</h2>
+        <div class="two">
+            <div>
+                <div class="field-label">Points de satisfaction</div>
+                <div class="block">{% if evaluation.points_satisfaction %}{{ evaluation.points_satisfaction }}{% else %}<span class="empty-hint">Non renseigné</span>{% endif %}</div>
+            </div>
+            <div>
+                <div class="field-label">Points à améliorer</div>
+                <div class="block">{% if evaluation.points_amelioration %}{{ evaluation.points_amelioration }}{% else %}<span class="empty-hint">Non renseigné</span>{% endif %}</div>
+            </div>
+        </div>
+
+        <!-- 9. PROPOSITIONS DE L'ÉVALUATEUR -->
+        <h2 class="section">9. Propositions de l'évaluateur sur la formation et la carrière</h2>
+        <div class="block">{% if evaluation.propositions_evaluateur %}{{ evaluation.propositions_evaluateur }}{% else %}<span class="empty-hint">Non renseigné</span>{% endif %}</div>
+
+        <!-- 10. SIGNATURES -->
+        <h2 class="section">10. Signatures et visa</h2>
+        <div class="signatures">
+            <div class="sign">
+                <div class="lbl">Signature de l'évalué</div>
+                <div class="meta">{{ evaluation.collaborateur.nom_complet }}</div>
+                <div class="meta" style="margin-top:4px">Date :</div>
+            </div>
+            <div class="sign">
+                <div class="lbl">Signature du N+1 / évaluateur</div>
+                <div class="meta">{{ evaluation.evaluateur|default:evaluation.responsable_hierarchique|default:"" }}</div>
+                <div class="meta" style="margin-top:4px">Date :</div>
+            </div>
+            <div class="sign">
+                <div class="lbl">Visa Ressources Humaines</div>
+                <div class="meta">Nom et fonction :</div>
+                <div class="meta" style="margin-top:4px">Date :</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            CORAF · Conseil Ouest et Centre Africain pour la Recherche et le Développement Agricoles<br>
+            Statut de la fiche : <strong>{{ evaluation.get_statut_display }}</strong> · Document généré le {% now "d/m/Y à H:i" %}
+        </div>
+    </div>
+</body>
+</html>

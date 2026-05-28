@@ -1,0 +1,18 @@
+{# Onglets de navigation pour l'espace administration #}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-1 mb-5 inline-flex flex-wrap gap-1">
+    {% url 'evaluations:admin_utilisateurs' as u_users %}
+    {% url 'evaluations:admin_catalogue' as u_cat %}
+    {% url 'evaluations:admin_bareme' as u_bar %}
+    <a href="{{ u_users }}" class="inline-flex items-center gap-2 text-sm font-medium px-3.5 py-2 rounded-xl transition
+        {% if 'admin_util' in request.resolver_match.url_name %}bg-coraf-50 text-coraf-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+        <i data-lucide="users-round" class="w-4 h-4"></i> Utilisateurs
+    </a>
+    <a href="{{ u_cat }}" class="inline-flex items-center gap-2 text-sm font-medium px-3.5 py-2 rounded-xl transition
+        {% if 'admin_catalogue' in request.resolver_match.url_name or 'admin_objectif' in request.resolver_match.url_name %}bg-coraf-50 text-coraf-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+        <i data-lucide="target" class="w-4 h-4"></i> Catalogue d'objectifs
+    </a>
+    <a href="{{ u_bar }}" class="inline-flex items-center gap-2 text-sm font-medium px-3.5 py-2 rounded-xl transition
+        {% if 'admin_bareme' in request.resolver_match.url_name or 'admin_niveau' in request.resolver_match.url_name %}bg-coraf-50 text-coraf-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+        <i data-lucide="sliders-horizontal" class="w-4 h-4"></i> Barème d'appréciation
+    </a>
+</div>

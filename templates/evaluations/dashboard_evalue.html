@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block heading %}Mes évaluations{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-br from-coraf-700 to-coraf-900 text-white rounded-2xl shadow-elevated p-6 mb-6">
+    <div class="flex items-start gap-4 flex-wrap">
+        <div class="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur text-white flex items-center justify-center text-lg font-bold shrink-0">
+            {{ profil_collab.nom|first|upper }}{{ profil_collab.prenom|first|upper }}
+        </div>
+        <div class="flex-1 min-w-0">
+            <div class="text-xs uppercase tracking-wider text-coraf-100/80 font-semibold">Espace de l'évalué</div>
+            <div class="text-xl sm:text-2xl font-bold mt-0.5">Bonjour {{ profil_collab.prenom|default:profil_collab.nom }}</div>
+            <div class="text-sm text-coraf-100/90 mt-1">{{ profil_collab.poste|default:profil_collab.get_type_display }} · {{ profil_collab.direction }}</div>
+        </div>
+    </div>
+    <p class="text-sm text-coraf-100/90 mt-5 max-w-3xl">
+        Vous trouverez ci-dessous les évaluations vous concernant. Pour chacune, vous pouvez compléter
+        <strong>vos faits marquants</strong>, vos <strong>initiatives personnelles</strong> et un
+        <strong>commentaire par objectif</strong>, tant que l'évaluation est en <strong>Brouillon</strong>.
+        Une fois soumise par l'évaluateur, votre saisie est verrouillée.
+    </p>
+</div>
+
+{% if evaluations %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    {% for ev in evaluations %}
+    {% with derniere_modif=ev.date_modification %}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 hover:shadow-elevated transition">
+        <div class="flex items-start justify-between gap-3 mb-3 flex-wrap">
+            <div>
+                <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Évaluation</div>
+                <div class="font-semibold text-slate-900">Du {{ ev.date_evaluation|date:"d/m/Y" }}</div>
+                {% if ev.evaluateur %}<div class="text-xs text-slate-500 mt-0.5">Par {{ ev.evaluateur }}</div>{% endif %}
+            </div>
+            <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full
+                {% if ev.statut == Statut.BROUILLON %}bg-amber-50 text-amber-800
+                {% elif ev.statut == Statut.SOUMISE %}bg-coraf-50 text-coraf-800
+                {% elif ev.statut == Statut.VALIDEE %}bg-coraf-100 text-coraf-900
+                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                <i data-lucide="{% if ev.statut == Statut.BROUILLON %}pencil{% elif ev.statut == Statut.SOUMISE %}lock{% else %}check{% endif %}" class="w-3 h-3"></i>
+                {{ ev.get_statut_display }}
+            </span>
+        </div>
+
+        {% if ev.statut == Statut.BROUILLON %}
+        <div class="rounded-lg bg-amber-50/60 border border-amber-100 text-amber-900 px-3 py-2 text-xs mb-4 flex items-start gap-2">
+            <i data-lucide="info" class="w-3.5 h-3.5 mt-0.5"></i>
+            <span>Vous pouvez compléter vos parties. Quand vous estimez avoir fini, l'évaluateur soumettra l'évaluation pour la finaliser.</span>
+        </div>
+        {% else %}
+        <div class="rounded-lg bg-slate-50 border border-slate-100 text-slate-700 px-3 py-2 text-xs mb-4 flex items-start gap-2">
+            <i data-lucide="lock" class="w-3.5 h-3.5 mt-0.5"></i>
+            <span>Évaluation verrouillée. Vous pouvez consulter la fiche mais plus modifier vos parties.</span>
+        </div>
+        {% endif %}
+
+        <div class="flex flex-wrap gap-2">
+            {% if ev.statut == Statut.BROUILLON %}
+            <a href="{% url 'evaluations:evaluation_evalue_edit' ev.uuid %}" class="inline-flex items-center gap-1.5 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3 py-1.5 rounded-lg shadow-sm transition">
+                <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Compléter ma saisie
+            </a>
+            {% endif %}
+            <a href="{{ ev.get_absolute_url }}" class="inline-flex items-center gap-1.5 bg-white border border-slate-300 hover:border-coraf-300 hover:text-coraf-800 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i> Voir la fiche
+            </a>
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+    <i data-lucide="inbox" class="w-10 h-10 mx-auto text-slate-300 mb-3"></i>
+    <div class="font-semibold text-slate-700">Aucune évaluation pour le moment</div>
+    <p class="text-sm text-slate-500 mt-1">Vous serez notifié(e) dès qu'un évaluateur démarrera une évaluation vous concernant.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block heading %}Administration · Catalogue d'objectifs{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'evaluations:admin_objectif_create' %}" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+    <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Nouvel objectif</span>
+</a>
+{% endblock %}
+
+{% block content %}
+{% include "evaluations/admin/_admin_tabs.html" %}
+
+<div class="rounded-xl bg-coraf-50 border border-coraf-200 text-coraf-800 px-4 py-3 text-sm mb-5 flex items-start gap-2">
+    <i data-lucide="info" class="w-4 h-4 mt-0.5"></i>
+    <span>Les objectifs <strong>actifs</strong> sont automatiquement proposés à chaque nouvelle évaluation, dans l'ordre défini ici. Modifier un objectif ici n'affecte pas les évaluations déjà enregistrées (elles conservent leurs valeurs au moment de la saisie).</span>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-left text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-5 py-3 font-semibold w-12">Ordre</th>
+                    <th class="px-5 py-3 font-semibold">Objectif</th>
+                    <th class="px-5 py-3 font-semibold text-right">Coef.</th>
+                    <th class="px-5 py-3 font-semibold">Statut</th>
+                    <th class="px-5 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for o in objectifs %}
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="px-5 py-3 font-medium text-slate-500">{{ o.ordre }}</td>
+                    <td class="px-5 py-3">
+                        <div class="font-medium text-slate-900">{{ o.titre }}</div>
+                        <div class="text-xs text-slate-500 mt-0.5">{{ o.description|truncatewords:18 }}</div>
+                    </td>
+                    <td class="px-5 py-3 text-right font-semibold">{{ o.coefficient }}</td>
+                    <td class="px-5 py-3">
+                        {% if o.actif %}
+                        <span class="inline-flex items-center gap-1 text-xs text-coraf-700"><span class="w-1.5 h-1.5 rounded-full bg-coraf-600"></span> Actif</span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 text-xs text-slate-400"><span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Désactivé</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-right whitespace-nowrap">
+                        <a href="{% url 'evaluations:admin_objectif_edit' o.pk %}" class="text-sm text-coraf-700 hover:text-coraf-900 font-medium">Modifier</a>
+                        <form method="post" action="{% url 'evaluations:admin_objectif_delete' o.pk %}" class="inline ml-3" onsubmit="return confirm('Supprimer cet objectif du catalogue ? Les évaluations passées ne seront pas affectées.');">
+                            {% csrf_token %}
+                            <button type="submit" class="text-sm text-red-600 hover:text-red-800 font-medium">Supprimer</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-5 py-12 text-center text-slate-400">Catalogue vide. Ajoutez le premier objectif.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

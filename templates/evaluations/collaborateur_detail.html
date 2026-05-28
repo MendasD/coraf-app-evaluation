@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block heading %}{{ collab.nom_complet }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'evaluations:evaluation_create' %}" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+    <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Nouvelle évaluation</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mb-5">
+    <div class="flex items-start gap-5 flex-wrap">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-coraf-400 to-coraf-700 text-white flex items-center justify-center text-xl font-bold shrink-0">
+            {{ collab.nom|first|upper }}{{ collab.prenom|first|upper }}
+        </div>
+        <div class="flex-1 min-w-0 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+            <div>
+                <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Type</div>
+                <div class="font-medium text-slate-900 mt-0.5">{{ collab.get_type_display }}</div>
+            </div>
+            <div>
+                <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Poste</div>
+                <div class="font-medium text-slate-900 mt-0.5">{{ collab.poste|default:"Non renseigné" }}</div>
+            </div>
+            <div class="col-span-2">
+                <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Direction</div>
+                <div class="font-medium text-slate-900 mt-0.5">{{ collab.direction|default:"Non renseigné" }}</div>
+            </div>
+            <div class="col-span-2 lg:col-span-4">
+                <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Projets</div>
+                <div class="font-medium text-slate-900 mt-0.5">{{ collab.projets|default:"Non renseigné" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if evaluations|length > 1 %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-4 mb-5">
+    <form method="get" class="flex items-center gap-3 flex-wrap">
+        <label for="eval-select" class="text-sm font-medium text-slate-700 inline-flex items-center gap-2">
+            <i data-lucide="filter" class="w-4 h-4 text-coraf-700"></i> Évaluation affichée :
+        </label>
+        <select id="eval-select" name="eval" onchange="this.form.submit()"
+                class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-coraf-500 focus:ring-2 focus:ring-coraf-100 outline-none">
+            {% for ev in evaluations %}
+            <option value="{{ ev.uuid }}" {% if selected and selected.uuid == ev.uuid %}selected{% endif %}>
+                {{ ev.date_evaluation|date:"d/m/Y" }} · {% if ev.note_globale is not None %}{{ ev.note_globale }} %{% else %}sans note{% endif %} ({{ ev.get_statut_display }})
+            </option>
+            {% endfor %}
+        </select>
+        <span class="text-xs text-slate-500">La courbe d'évolution ci-dessous reste calculée sur l'ensemble.</span>
+    </form>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h2 class="font-semibold text-slate-900 mb-1 flex items-center gap-2"><i data-lucide="line-chart" class="w-4 h-4 text-coraf-700"></i> Évolution</h2>
+        <p class="text-xs text-slate-500 mb-3">Note globale par évaluation, en %</p>
+        <div class="relative h-64"><canvas id="evolution"></canvas></div>
+    </div>
+
+    {% if selected %}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <div class="flex items-start justify-between mb-1">
+            <h2 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="radar" class="w-4 h-4 text-coraf-700"></i> Évaluation du {{ selected.date_evaluation|date:"d/m/Y" }}</h2>
+        </div>
+        <div class="flex items-baseline gap-3 mb-3">
+            <div class="text-3xl font-bold text-coraf-800">{% if selected_note is not None %}{{ selected_note }} %{% else %}<span class="text-slate-400">N/A</span>{% endif %}</div>
+            {% if selected_appreciation %}
+            <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full text-white" style="background-color: {{ selected_appreciation.couleur }}">{{ selected_appreciation.libelle }}</span>
+            {% endif %}
+        </div>
+        <div class="relative h-48"><canvas id="radar"></canvas></div>
+        <a href="{{ selected.get_absolute_url }}" class="mt-3 inline-flex items-center gap-1.5 text-xs text-coraf-700 hover:text-coraf-900 font-medium">
+            Voir le détail <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% if selected and objectifs_focus %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden mb-5">
+    <div class="px-5 py-4 border-b border-slate-200">
+        <h2 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="list-checks" class="w-4 h-4 text-slate-500"></i> Objectifs · évaluation du {{ selected.date_evaluation|date:"d/m/Y" }}</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-left text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-3 font-semibold">N°</th>
+                    <th class="px-4 py-3 font-semibold">Objectif</th>
+                    <th class="px-4 py-3 font-semibold text-right">Coef.</th>
+                    <th class="px-4 py-3 font-semibold text-right">Taux</th>
+                    <th class="px-4 py-3 font-semibold text-right">Note</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for o in objectifs_focus %}
+                <tr>
+                    <td class="px-4 py-3 font-medium text-slate-500">{{ o.numero }}</td>
+                    <td class="px-4 py-3">
+                        <div class="font-medium text-slate-900">{{ o.titre|default:o.description|truncatewords:10 }}</div>
+                    </td>
+                    <td class="px-4 py-3 text-right font-medium text-slate-700">{{ o.coefficient }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="inline-flex items-center text-xs font-semibold px-2 py-1 rounded-md
+                            {% if o.taux_atteinte >= 75 %}bg-coraf-50 text-coraf-800
+                            {% elif o.taux_atteinte >= 50 %}bg-amber-50 text-amber-800
+                            {% else %}bg-red-50 text-red-800{% endif %}">{{ o.taux_atteinte }} %</span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-bold text-slate-900">{{ o.note }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-200">
+        <h2 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-slate-500"></i> Historique des évaluations</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-left text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-5 py-3 font-semibold">Date</th>
+                    <th class="px-5 py-3 font-semibold hidden sm:table-cell">Statut</th>
+                    <th class="px-5 py-3 font-semibold text-right">Note</th>
+                    <th class="px-5 py-3 font-semibold">Appréciation</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for ev in evaluations %}
+                <tr class="hover:bg-slate-50 transition {% if selected and selected.uuid == ev.uuid %}bg-coraf-50/60{% endif %}">
+                    <td class="px-5 py-3">
+                        <a href="?eval={{ ev.uuid }}" class="font-medium text-slate-900 hover:text-coraf-700 transition">{{ ev.date_evaluation|date:"d/m/Y" }}</a>
+                        <a href="{{ ev.get_absolute_url }}" class="ml-2 text-xs text-coraf-700 hover:underline">détail →</a>
+                    </td>
+                    <td class="px-5 py-3 hidden sm:table-cell">
+                        <span class="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full
+                            {% if ev.statut == 'VALIDEE' or ev.statut == 'VISEE_RH' %}bg-coraf-50 text-coraf-800
+                            {% elif ev.statut == 'SOUMISE' %}bg-amber-50 text-amber-800
+                            {% else %}bg-slate-100 text-slate-600{% endif %}">{{ ev.get_statut_display }}</span>
+                    </td>
+                    <td class="px-5 py-3 text-right font-semibold text-slate-900">{% if ev.note_globale is not None %}{{ ev.note_globale }} %{% else %}<span class="text-slate-400">N/A</span>{% endif %}</td>
+                    <td class="px-5 py-3">
+                        {% with appr=ev.appreciation %}
+                        {% if appr %}<span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full text-white" style="background-color: {{ appr.couleur }}">{{ appr.libelle }}</span>{% else %}<span class="text-slate-400">N/A</span>{% endif %}
+                        {% endwith %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="px-5 py-12 text-center text-slate-400">
+                    <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                    <div>Aucune évaluation pour ce collaborateur.</div>
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const evo = {{ evolution_json|safe }};
+if (evo.labels.length) {
+    new Chart(document.getElementById('evolution'), {
+        type: 'line',
+        data: { labels: evo.labels, datasets: [{
+            label: 'Note globale (%)', data: evo.notes,
+            borderColor: '#3f7723', backgroundColor: 'rgba(63,119,35,0.12)',
+            pointBackgroundColor: '#3f7723', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 5,
+            tension: 0.35, fill: true, borderWidth: 2.5
+        }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { suggestedMin: 0, suggestedMax: 100, grid: { color: '#f1f5f9' }, ticks: { callback: v => v + ' %' } }, x: { grid: { display: false } } },
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', padding: 10, callbacks: { label: ctx => ` ${ctx.parsed.y} %` } } }
+        }
+    });
+}
+const radarData = {{ radar_json|safe }};
+if (radarData.labels.length) {
+    new Chart(document.getElementById('radar'), {
+        type: 'radar',
+        data: { labels: radarData.labels, datasets: [{
+            label: "Taux d'atteinte (%)", data: radarData.taux,
+            backgroundColor: 'rgba(95,160,31,0.22)', borderColor: '#3f7723',
+            pointBackgroundColor: '#3f7723', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4,
+            borderWidth: 2
+        }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { r: { suggestedMin: 0, suggestedMax: 100, ticks: { backdropColor: 'transparent', callback: v => v + '%' }, grid: { color: '#e2e8f0' }, pointLabels: { font: { size: 11, weight: '600' }, color: '#475569' } } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a', padding: 10, titleFont: { size: 12 }, bodyFont: { size: 11 },
+                    callbacks: {
+                        title: ctx => radarData.titres[ctx[0].dataIndex] || ctx[0].label,
+                        label: ctx => ` ${ctx.parsed.r} %`
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

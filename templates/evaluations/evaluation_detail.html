@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block heading %}Évaluation · {{ evaluation.collaborateur.nom_complet }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'evaluations:evaluation_print' evaluation.uuid %}" target="_blank" class="inline-flex items-center gap-2 bg-white border border-slate-300 hover:border-coraf-300 hover:text-coraf-800 text-slate-700 text-sm font-medium px-3.5 py-2 rounded-lg transition shadow-sm">
+    <i data-lucide="printer" class="w-4 h-4"></i> <span class="hidden sm:inline">Imprimer</span>
+</a>
+
+{% if role_evalue_seul %}
+    {% if peut_modifier_evalue %}
+    <a href="{% url 'evaluations:evaluation_evalue_edit' evaluation.uuid %}" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+        <i data-lucide="pencil" class="w-4 h-4"></i> <span class="hidden sm:inline">Ma saisie</span>
+    </a>
+    {% endif %}
+{% else %}
+    {# Évaluateur ou admin #}
+    {% if peut_modifier_evaluateur %}
+    <a href="{% url 'evaluations:evaluation_edit' evaluation.uuid %}" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+        <i data-lucide="pencil" class="w-4 h-4"></i> <span class="hidden sm:inline">Modifier</span>
+    </a>
+    {% endif %}
+
+    {% if evaluation.statut == Statut.BROUILLON %}
+    <form method="post" action="{% url 'evaluations:evaluation_change_statut' evaluation.uuid %}" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="statut" value="{{ Statut.SOUMISE }}">
+        <button type="submit" class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition" title="Soumettre verrouille la saisie de l'évalué">
+            <i data-lucide="send" class="w-4 h-4"></i> <span class="hidden sm:inline">Soumettre</span>
+        </button>
+    </form>
+    {% elif evaluation.statut == Statut.SOUMISE %}
+    <form method="post" action="{% url 'evaluations:evaluation_change_statut' evaluation.uuid %}" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="statut" value="{{ Statut.VALIDEE }}">
+        <button type="submit" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+            <i data-lucide="check" class="w-4 h-4"></i> <span class="hidden sm:inline">Valider</span>
+        </button>
+    </form>
+    {% elif evaluation.statut == Statut.VALIDEE and is_admin %}
+    <form method="post" action="{% url 'evaluations:evaluation_change_statut' evaluation.uuid %}" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="statut" value="{{ Statut.VISEE_RH }}">
+        <button type="submit" class="inline-flex items-center gap-2 bg-coraf-800 hover:bg-coraf-900 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+            <i data-lucide="stamp" class="w-4 h-4"></i> <span class="hidden sm:inline">Apposer le visa RH</span>
+        </button>
+    </form>
+    {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if not role_evalue_seul %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-4 sm:p-5 mb-5">
+    <div class="flex items-start gap-3 flex-wrap">
+        <span class="w-10 h-10 rounded-xl inline-flex items-center justify-center shrink-0
+            {% if not evalue_a_un_compte %}bg-amber-50 text-amber-700
+            {% elif evaluation.statut == Statut.BROUILLON and evalue_a_commence %}bg-coraf-50 text-coraf-700
+            {% elif evaluation.statut == Statut.BROUILLON %}bg-amber-50 text-amber-700
+            {% else %}bg-slate-100 text-slate-600{% endif %}">
+            <i data-lucide="{% if not evalue_a_un_compte %}user-x{% elif evaluation.statut == Statut.BROUILLON and evalue_a_commence %}check-circle-2{% elif evaluation.statut == Statut.BROUILLON %}hourglass{% else %}lock{% endif %}" class="w-5 h-5"></i>
+        </span>
+        <div class="flex-1 min-w-0">
+            {% if not evalue_a_un_compte %}
+                <div class="font-semibold text-slate-900">L'évalué n'a pas de compte d'accès</div>
+                <p class="text-sm text-slate-600 mt-0.5">{{ evaluation.collaborateur.nom_complet }} ne peut pas se connecter à la plateforme pour remplir ses parties. Vous pouvez lui créer un compte depuis sa fiche.</p>
+                <a href="{{ evaluation.collaborateur.get_absolute_url }}" class="inline-flex items-center gap-1.5 text-sm text-coraf-700 hover:text-coraf-900 font-medium mt-2">Voir la fiche du collaborateur <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></a>
+            {% elif evaluation.statut == Statut.BROUILLON %}
+                {% if evalue_a_commence %}
+                <div class="font-semibold text-slate-900">{{ evaluation.collaborateur.nom_complet }} a commencé sa saisie</div>
+                <p class="text-sm text-slate-600 mt-0.5">Ses faits marquants, initiatives personnelles ou commentaires apparaissent dans cette fiche. Lorsque tout est prêt, cliquez sur <strong>Soumettre</strong> pour verrouiller sa saisie et finaliser l'évaluation.</p>
+                {% else %}
+                <div class="font-semibold text-slate-900">En attente de la saisie de {{ evaluation.collaborateur.nom_complet }}</div>
+                <p class="text-sm text-slate-600 mt-0.5">Cette évaluation est partagée avec l'évalué. Il/elle peut compléter ses parties (faits marquants, initiatives personnelles, commentaires par objectif) depuis son tableau de bord à <strong>{{ evaluation.collaborateur.user.email }}</strong>.</p>
+                {% endif %}
+            {% elif evaluation.statut == Statut.SOUMISE %}
+                <div class="font-semibold text-slate-900">Saisie de l'évalué verrouillée</div>
+                <p class="text-sm text-slate-600 mt-0.5">Vous avez soumis cette évaluation. {{ evaluation.collaborateur.nom_complet }} ne peut plus modifier ses parties. Vous pouvez encore ajuster vos commentaires et notes avant de valider.</p>
+            {% elif evaluation.statut == Statut.VALIDEE %}
+                <div class="font-semibold text-slate-900">Évaluation validée</div>
+                <p class="text-sm text-slate-600 mt-0.5">L'évaluation est validée. Plus aucune modification de la part de l'évalué.</p>
+            {% else %}
+                <div class="font-semibold text-slate-900">Visa RH apposé</div>
+                <p class="text-sm text-slate-600 mt-0.5">L'évaluation est définitivement clôturée.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+    <div class="lg:col-span-2 bg-gradient-to-br from-coraf-700 to-coraf-900 text-white rounded-2xl shadow-elevated p-6">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+                <div class="text-xs uppercase tracking-wider text-coraf-100/80 font-semibold mb-1">Évaluation du {{ evaluation.date_evaluation|date:"d/m/Y" }}</div>
+                <div class="text-xl font-semibold">{{ evaluation.collaborateur.nom_complet }}</div>
+                <div class="text-sm text-coraf-100/90 mt-0.5">{{ evaluation.collaborateur.poste }}</div>
+                <div class="text-xs text-coraf-100/70">{{ evaluation.collaborateur.direction }}</div>
+            </div>
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-white/15 backdrop-blur">
+                <i data-lucide="bookmark-check" class="w-3.5 h-3.5"></i> {{ evaluation.get_statut_display }}
+            </span>
+        </div>
+        <div class="mt-6 flex items-end gap-5 flex-wrap">
+            <div>
+                <div class="text-xs uppercase tracking-wider text-coraf-100/80 font-semibold">Taux d'exécution globale</div>
+                <div class="text-5xl font-bold leading-none mt-1">{% if note is not None %}{{ note }}<span class="text-2xl"> %</span>{% else %}<span class="text-coraf-100/70 text-2xl">N/A</span>{% endif %}</div>
+            </div>
+            {% if appreciation %}
+            <span class="inline-flex items-center text-sm font-semibold px-3.5 py-1.5 rounded-full text-white shadow-sm" style="background-color: {{ appreciation.couleur }}">{{ appreciation.libelle }}</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h2 class="font-semibold text-slate-900 mb-3 flex items-center gap-2"><i data-lucide="radar" class="w-4 h-4 text-coraf-700"></i> Vue par objectif</h2>
+        <div class="relative h-56"><canvas id="radar"></canvas></div>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden mb-5">
+    <div class="px-5 py-4 border-b border-slate-200"><h2 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="list-checks" class="w-4 h-4 text-slate-500"></i> Détail des objectifs</h2></div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-left text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-3 font-semibold">N°</th>
+                    <th class="px-4 py-3 font-semibold">Objectif</th>
+                    <th class="px-4 py-3 font-semibold text-right">Coef.</th>
+                    <th class="px-4 py-3 font-semibold text-right">Taux</th>
+                    <th class="px-4 py-3 font-semibold text-right">Note</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for o in objectifs %}
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="px-4 py-3 font-medium text-slate-500">{{ o.numero }}</td>
+                    <td class="px-4 py-3">
+                        <div class="font-medium text-slate-900">{{ o.titre|default:o.description|truncatewords:10 }}</div>
+                        {% if o.livrables %}<div class="text-xs text-slate-500 mt-0.5">{{ o.livrables|truncatewords:14 }}</div>{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right font-medium text-slate-700">{{ o.coefficient }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="inline-flex items-center text-xs font-semibold px-2 py-1 rounded-md
+                            {% if o.taux_atteinte >= 75 %}bg-coraf-50 text-coraf-800
+                            {% elif o.taux_atteinte >= 50 %}bg-amber-50 text-amber-800
+                            {% else %}bg-red-50 text-red-800{% endif %}">{{ o.taux_atteinte }} %</span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-bold text-slate-900">{{ o.note }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Aucun objectif renseigné.</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-slate-50 font-semibold text-slate-700">
+                <tr>
+                    <td class="px-4 py-3" colspan="2">Total</td>
+                    <td class="px-4 py-3 text-right">{{ evaluation.total_coefficient }}</td>
+                    <td></td>
+                    <td class="px-4 py-3 text-right">{{ evaluation.total_note }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h3 class="font-semibold text-slate-900 mb-2 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-coraf-700"></i> Faits marquants <span class="text-xs font-normal text-slate-400">(rempli par l'évalué)</span></h3>
+        <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{{ evaluation.faits_marquants|default:"Non renseigné" }}</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h3 class="font-semibold text-slate-900 mb-2 flex items-center gap-2"><i data-lucide="rocket" class="w-4 h-4 text-coraf-700"></i> Initiatives personnelles <span class="text-xs font-normal text-slate-400">(rempli par l'évalué)</span></h3>
+        <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{{ evaluation.initiatives_personnelles|default:"Non renseigné" }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h3 class="font-semibold text-slate-900 mb-2 flex items-center gap-2"><i data-lucide="thumbs-up" class="w-4 h-4 text-coraf-700"></i> Points de satisfaction <span class="text-xs font-normal text-slate-400">(évaluateur)</span></h3>
+        <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{{ evaluation.points_satisfaction|default:"Non renseigné" }}</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h3 class="font-semibold text-slate-900 mb-2 flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4 text-amber-500"></i> Points à améliorer <span class="text-xs font-normal text-slate-400">(évaluateur)</span></h3>
+        <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{{ evaluation.points_amelioration|default:"Non renseigné" }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const radarData = {{ radar_json|safe }};
+if (radarData.labels.length) {
+    new Chart(document.getElementById('radar'), {
+        type: 'radar',
+        data: { labels: radarData.labels, datasets: [{
+            label: "Taux d'atteinte (%)", data: radarData.taux,
+            backgroundColor: 'rgba(95,160,31,0.22)', borderColor: '#3f7723',
+            pointBackgroundColor: '#3f7723', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4, borderWidth: 2
+        }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { r: { suggestedMin: 0, suggestedMax: 100, ticks: { backdropColor: 'transparent', callback: v => v + '%' }, grid: { color: '#e2e8f0' }, pointLabels: { font: { size: 11, weight: '600' }, color: '#475569' } } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a', padding: 10, titleFont: { size: 12 }, bodyFont: { size: 11 },
+                    callbacks: {
+                        title: ctx => radarData.titres[ctx[0].dataIndex] || ctx[0].label,
+                        label: ctx => ` ${ctx.parsed.r} %`
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
