@@ -6,7 +6,7 @@ asgiref==3.11.1
     #   django-htmx
 dj-database-url==2.3.0
     # via coraf-eval (pyproject.toml)
-django==5.1.4
+django==5.1.15
     # via
     #   coraf-eval (pyproject.toml)
     #   dj-database-url
@@ -21,7 +21,7 @@ psycopg==3.2.3
     # via coraf-eval (pyproject.toml)
 psycopg-binary==3.2.3
     # via psycopg
-python-dotenv==1.0.1
+python-dotenv==1.2.2
     # via coraf-eval (pyproject.toml)
 sqlparse==0.5.5
     # via django
