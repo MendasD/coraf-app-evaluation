@@ -25,3 +25,5 @@ Thumbs.db
 *.xlsx
 unpacked_form/
 form_extract.md
+
+node_modules/
