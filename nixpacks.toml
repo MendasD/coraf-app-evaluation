@@ -1,0 +1,9 @@
+# Nixpacks détecte par défaut le projet comme Node parce que package.json est
+# présent (pour la compilation locale de Tailwind). On force Python en
+# provider unique : la feuille de style Tailwind est déjà compilée et committée
+# dans static/css/app.css, donc Railway n'a pas besoin de Node ni de npm.
+
+providers = ["python"]
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"
