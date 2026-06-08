@@ -8,6 +8,28 @@ from django.urls import reverse
 from django.utils import timezone
 
 
+class Unite(models.Model):
+    """Unité fonctionnelle CORAF (KM, M&E, Genre, etc.).
+
+    Les objectifs et les évaluations sont rattachés à une unité : un évalué
+    voit uniquement les objectifs prédéfinis pour SON unité.
+    """
+
+    code = models.SlugField("Code", max_length=40, unique=True)
+    libelle = models.CharField("Libellé", max_length=120)
+    description = models.TextField("Description", blank=True)
+    ordre = models.PositiveIntegerField("Ordre d'affichage", default=0)
+    actif = models.BooleanField("Active", default=True)
+
+    class Meta:
+        verbose_name = "Unité"
+        verbose_name_plural = "Unités"
+        ordering = ["ordre", "libelle"]
+
+    def __str__(self):
+        return self.libelle
+
+
 class Collaborateur(models.Model):
     class Type(models.TextChoices):
         CONSULTANT = "CONSULTANT", "Consultant interne"
@@ -25,6 +47,23 @@ class Collaborateur(models.Model):
         null=True, blank=True,
         related_name="profil_collaborateur",
         verbose_name="Compte utilisateur lié",
+    )
+    # L'évaluateur attitré du collaborateur : c'est lui qui revoit, valide et
+    # signe l'évaluation envoyée par l'évalué.
+    evaluateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="collaborateurs_a_evaluer",
+        verbose_name="Évaluateur attitré",
+    )
+    # Unité d'affectation (détermine la grille d'objectifs).
+    unite = models.ForeignKey(
+        Unite,
+        on_delete=models.PROTECT,
+        null=True, blank=True,
+        related_name="collaborateurs",
+        verbose_name="Unité",
     )
     nom = models.CharField("Nom", max_length=120)
     prenom = models.CharField("Prénom", max_length=120, blank=True)
@@ -97,6 +136,14 @@ class ObjectifCatalogue(models.Model):
     valeurs au moment de la saisie).
     """
 
+    unite = models.ForeignKey(
+        Unite,
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name="objectifs_catalogue",
+        verbose_name="Unité",
+        help_text="Les évalués de cette unité auront cet objectif dans leur évaluation.",
+    )
     titre = models.CharField("Titre de l'objectif", max_length=300)
     description = models.TextField("Description")
     livrables = models.TextField("Livrables attendus", blank=True)
@@ -112,10 +159,11 @@ class ObjectifCatalogue(models.Model):
     class Meta:
         verbose_name = "Objectif (catalogue)"
         verbose_name_plural = "Catalogue des objectifs"
-        ordering = ["ordre", "id"]
+        ordering = ["unite__ordre", "ordre", "id"]
 
     def __str__(self):
-        return self.titre
+        suffix = f" [{self.unite.libelle}]" if self.unite_id else ""
+        return f"{self.titre}{suffix}"
 
 
 class Evaluation(models.Model):
@@ -208,11 +256,19 @@ class Evaluation(models.Model):
         return self.statut != self.Statut.VISEE_RH
 
     def remplir_objectifs_depuis_catalogue(self):
-        """Crée les Objectifs de l'évaluation depuis les objectifs actifs du catalogue."""
+        """Crée les Objectifs de l'évaluation depuis le catalogue de l'unité du collaborateur.
+
+        Si le collaborateur n'a pas d'unité, ne crée rien (l'admin devra
+        intervenir pour ajouter manuellement des objectifs).
+        """
         if self.objectifs.exists():
             return
+        unite = self.collaborateur.unite
+        if not unite:
+            return
         for idx, cat in enumerate(
-            ObjectifCatalogue.objects.filter(actif=True).order_by("ordre", "id"), start=1
+            ObjectifCatalogue.objects.filter(unite=unite, actif=True).order_by("ordre", "id"),
+            start=1,
         ):
             Objectif.objects.create(
                 evaluation=self,
@@ -223,6 +279,28 @@ class Evaluation(models.Model):
                 livrables=cat.livrables,
                 coefficient=cat.coefficient,
             )
+
+
+class FaitMarquant(models.Model):
+    """Un fait marquant saisi par l'évalué (avec son observation associée).
+
+    Présenté en tableau dans la fiche papier officielle (numéro, fait, observation).
+    """
+
+    evaluation = models.ForeignKey(
+        Evaluation, on_delete=models.CASCADE, related_name="faits_marquants_lignes"
+    )
+    ordre = models.PositiveIntegerField("N°", default=1)
+    fait = models.TextField("Fait marquant", blank=True)
+    observation = models.TextField("Observations", blank=True)
+
+    class Meta:
+        verbose_name = "Fait marquant"
+        verbose_name_plural = "Faits marquants"
+        ordering = ["ordre", "id"]
+
+    def __str__(self):
+        return f"Fait {self.ordre} de {self.evaluation_id}"
 
 
 class Objectif(models.Model):
@@ -264,4 +342,89 @@ class Objectif(models.Model):
     def note(self):
         return (self.coefficient * self.taux_atteinte / Decimal("100")).quantize(
             Decimal("0.01")
+        )
+
+
+class UserPreference(models.Model):
+    """Préférences utilisateur (un par User).
+
+    Stocke notamment le timestamp à partir duquel l'utilisateur souhaite voir
+    son journal d'audit. Les logs antérieurs restent en base (audit
+    administrateur) mais n'apparaissent plus dans sa vue personnelle.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="preferences",
+    )
+    audit_cleared_at = models.DateTimeField(
+        "Logs vidés jusqu'à",
+        null=True, blank=True,
+    )
+
+    class Meta:
+        verbose_name = "Préférences utilisateur"
+        verbose_name_plural = "Préférences utilisateurs"
+
+    def __str__(self):
+        return f"Préférences de {self.user}"
+
+
+class AuditLog(models.Model):
+    """Journal des actions menées sur la plateforme.
+
+    Les admins voient tous les logs ; les non-admins ne voient que les logs où
+    ils sont l'acteur OU la cible (cas typique : un admin reset leur mdp).
+    """
+
+    class Action(models.TextChoices):
+        CREATE = "CREATE", "Création"
+        UPDATE = "UPDATE", "Modification"
+        DELETE = "DELETE", "Suppression"
+        LOGIN = "LOGIN", "Connexion"
+        STATUT = "STATUT", "Changement de statut"
+        PASSWORD = "PASSWORD", "Mot de passe modifié"
+        OTHER = "OTHER", "Action"
+
+    date = models.DateTimeField("Date", default=timezone.now, db_index=True)
+    acteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="audit_logs_emis",
+        verbose_name="Acteur",
+    )
+    # Utilisateur cible (si l'action concerne directement un user, ex. reset password)
+    cible_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="audit_logs_recus",
+        verbose_name="Utilisateur ciblé",
+    )
+    action = models.CharField("Action", max_length=20, choices=Action.choices)
+    modele = models.CharField("Modèle concerné", max_length=80, blank=True)
+    objet_id = models.CharField("Identifiant de l'objet", max_length=80, blank=True)
+    description = models.CharField("Description", max_length=300)
+
+    class Meta:
+        verbose_name = "Entrée d'audit"
+        verbose_name_plural = "Journal d'audit"
+        ordering = ["-date", "-id"]
+
+    def __str__(self):
+        who = self.acteur.get_full_name() if self.acteur else "Système"
+        return f"{self.date:%d/%m/%Y %H:%M} · {who} · {self.get_action_display()} · {self.description}"
+
+    @classmethod
+    def log(cls, acteur, action, description, *, modele="", objet_id="", cible_user=None):
+        """Helper pour créer un log en une ligne depuis les vues."""
+        return cls.objects.create(
+            acteur=acteur if (acteur and getattr(acteur, "is_authenticated", False)) else None,
+            action=action,
+            description=description[:300],
+            modele=modele,
+            objet_id=str(objet_id) if objet_id else "",
+            cible_user=cible_user,
         )

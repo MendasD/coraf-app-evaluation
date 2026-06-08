@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block heading %}Journal d'activité{% endblock %}
+
+{% block topbar_actions %}
+<form method="post" action="{% url 'evaluations:audit_log_clear' %}" class="inline"
+      onsubmit="return confirm('Vider votre journal personnel ? Les entrées restent disponibles pour les administrateurs, mais elles disparaîtront de votre vue.');">
+    {% csrf_token %}
+    <button type="submit" class="inline-flex items-center gap-2 bg-white border border-slate-300 hover:border-amber-300 hover:text-amber-700 text-slate-700 text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+        <i data-lucide="eraser" class="w-4 h-4"></i> <span class="hidden sm:inline">Vider mon journal</span>
+    </button>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="rounded-xl bg-coraf-50 border border-coraf-200 text-coraf-800 px-4 py-3 text-sm mb-5 flex items-start gap-2">
+    <i data-lucide="info" class="w-4 h-4 mt-0.5"></i>
+    <div>
+        {% if user.is_staff %}
+            <strong>Vue administrateur :</strong> vous voyez toutes les actions menées sur la plateforme.
+        {% else %}
+            <strong>Vue personnelle :</strong> vous voyez les actions que vous avez effectuées et celles qui vous concernent.
+        {% endif %}
+        {% if has_cleared %}
+            <div class="text-xs mt-1 text-coraf-700">Vous avez vidé ce journal récemment. Seules les nouvelles entrées s'affichent.</div>
+        {% endif %}
+    </div>
+</div>
+
+<form method="get" class="bg-white rounded-2xl border border-slate-200 shadow-card p-4 mb-5">
+    <div class="flex flex-wrap gap-3 items-stretch">
+        <div class="flex-1 min-w-[200px] flex items-stretch rounded-lg border border-slate-300 bg-white focus-within:border-coraf-500 focus-within:ring-2 focus-within:ring-coraf-100 transition">
+            <span class="px-3 flex items-center text-slate-400"><i data-lucide="search" class="w-4 h-4"></i></span>
+            <input type="search" name="q" value="{{ q }}"
+                   placeholder="Rechercher dans la description ou par utilisateur…"
+                   class="flex-1 min-w-0 bg-transparent px-1 py-2 text-sm outline-none border-0">
+        </div>
+        <select name="action" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-coraf-500 focus:ring-2 focus:ring-coraf-100 outline-none">
+            <option value="">Toutes les actions</option>
+            {% for code, label in actions_disponibles %}
+                <option value="{{ code }}" {% if action_filter == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="px-4 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium rounded-lg">Filtrer</button>
+        {% if q or action_filter %}
+        <a href="{% url 'evaluations:audit_log' %}" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Réinitialiser</a>
+        {% endif %}
+    </div>
+</form>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-left text-xs uppercase tracking-wider">
+                <tr>
+                    <th class="px-5 py-3 font-semibold">Date</th>
+                    <th class="px-5 py-3 font-semibold">Acteur</th>
+                    <th class="px-5 py-3 font-semibold">Action</th>
+                    <th class="px-5 py-3 font-semibold">Détail</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for log in page %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-5 py-3 text-slate-600 whitespace-nowrap text-xs">{{ log.date|date:"d/m/Y H:i" }}</td>
+                    <td class="px-5 py-3">
+                        {% if log.acteur %}
+                            <div class="font-medium text-slate-900">{{ log.acteur.get_full_name|default:log.acteur.email }}</div>
+                            <div class="text-xs text-slate-500">{{ log.acteur.email }}</div>
+                        {% else %}
+                            <span class="text-slate-400 italic">Système</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3">
+                        <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full
+                            {% if log.action == 'CREATE' %}bg-coraf-50 text-coraf-800
+                            {% elif log.action == 'UPDATE' %}bg-amber-50 text-amber-800
+                            {% elif log.action == 'DELETE' %}bg-red-50 text-red-800
+                            {% elif log.action == 'LOGIN' %}bg-blue-50 text-blue-800
+                            {% elif log.action == 'STATUT' %}bg-purple-50 text-purple-800
+                            {% elif log.action == 'PASSWORD' %}bg-amber-50 text-amber-800
+                            {% else %}bg-slate-100 text-slate-700{% endif %}">
+                            {{ log.get_action_display }}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3 text-slate-700">{{ log.description }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="px-5 py-12 text-center text-slate-400">
+                    <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                    <div>Aucune action enregistrée.</div>
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page.has_other_pages %}
+    <div class="px-5 py-3 border-t border-slate-200 flex items-center justify-between text-sm">
+        <div class="text-slate-500">Page {{ page.number }} / {{ page.paginator.num_pages }} · {{ page.paginator.count }} entrée{{ page.paginator.count|pluralize }}</div>
+        <div class="flex gap-2">
+            {% if page.has_previous %}
+            <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">← Précédent</a>
+            {% endif %}
+            {% if page.has_next %}
+            <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">Suivant →</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

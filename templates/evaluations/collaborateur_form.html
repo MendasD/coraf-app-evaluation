@@ -4,47 +4,81 @@
 {% block content %}
 <form method="post" class="max-w-3xl">
     {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm mb-4">
+        {{ form.non_field_errors|striptags }}
+    </div>
+    {% endif %}
+
     <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
         <h2 class="font-semibold text-slate-900 mb-4 flex items-center gap-2"><i data-lucide="id-card" class="w-4 h-4 text-coraf-700"></i> Informations du collaborateur</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {% for field in form %}
-                {% if field.name == "creer_compte" or field.name == "compte_email" or field.name == "compte_password" %}
-                    {# Affichés dans la section dédiée plus bas #}
-                {% else %}
-                <div class="{% if field.name == 'projets' %}md:col-span-2{% endif %}">
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}<p class="text-xs text-red-600 mt-1">{{ field.errors|striptags }}</p>{% endif %}
-                </div>
-                {% endif %}
-            {% endfor %}
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.nom.label }} <span class="text-red-500">*</span></label>
+                {{ form.nom }}
+                {% if form.nom.errors %}<p class="text-xs text-red-600 mt-1">{{ form.nom.errors|striptags }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.prenom.label }}</label>
+                {{ form.prenom }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.type.label }}</label>
+                {{ form.type }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.unite.label }} <span class="text-red-500">*</span></label>
+                {{ form.unite }}
+                <p class="text-xs text-slate-500 mt-1">Détermine la grille d'objectifs proposée à l'évaluation.</p>
+                {% if form.unite.errors %}<p class="text-xs text-red-600 mt-1">{{ form.unite.errors|striptags }}</p>{% endif %}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.evaluateur.label }} <span class="text-red-500">*</span></label>
+                {{ form.evaluateur }}
+                <p class="text-xs text-slate-500 mt-1">L'évaluateur recevra les évaluations soumises par ce collaborateur pour les revoir et les valider.</p>
+                {% if form.evaluateur.errors %}<p class="text-xs text-red-600 mt-1">{{ form.evaluateur.errors|striptags }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.poste.label }}</label>
+                {{ form.poste }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.direction.label }}</label>
+                {{ form.direction }}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.projets.label }}</label>
+                {{ form.projets }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.date_entree.label }}</label>
+                {{ form.date_entree }}
+            </div>
+            <div class="flex items-end pb-1">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    {{ form.actif }} <span class="text-sm">{{ form.actif.label }}</span>
+                </label>
+            </div>
         </div>
     </div>
 
     <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-5">
-        <h2 class="font-semibold text-slate-900 mb-1 flex items-center gap-2"><i data-lucide="key-round" class="w-4 h-4 text-coraf-700"></i> Compte d'accès (optionnel)</h2>
-        <p class="text-xs text-slate-500 mb-4">Si vous activez cette option, le collaborateur recevra un compte pour se connecter et remplir lui-même ses parties de chaque évaluation (faits marquants, initiatives personnelles, commentaires).</p>
+        <h2 class="font-semibold text-slate-900 mb-1 flex items-center gap-2"><i data-lucide="key-round" class="w-4 h-4 text-coraf-700"></i> Compte d'accès</h2>
+        <p class="text-xs text-slate-500 mb-4">Le collaborateur se connectera avec ces identifiants pour démarrer et remplir ses évaluations.</p>
 
-        <label class="flex items-start gap-3 cursor-pointer">
-            <input type="checkbox" name="creer_compte" id="id_creer_compte" class="mt-1" onchange="document.getElementById('compte-fields').style.display = this.checked ? 'block' : 'none'">
-            <div>
-                <div class="text-sm font-medium text-slate-800">{{ form.creer_compte.label }}</div>
-                <div class="text-xs text-slate-500">{{ form.creer_compte.help_text }}</div>
-            </div>
-        </label>
-
-        <div id="compte-fields" class="mt-4 pt-4 border-t border-slate-100" style="display:none">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.compte_email.label }}</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.compte_email.label }} <span class="text-red-500">*</span></label>
                 {{ form.compte_email }}
+                {% if form.compte_email.help_text %}<p class="text-xs text-slate-500 mt-1">{{ form.compte_email.help_text }}</p>{% endif %}
                 {% if form.compte_email.errors %}<p class="text-xs text-red-600 mt-1">{{ form.compte_email.errors|striptags }}</p>{% endif %}
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.compte_password.label }}</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.compte_password.label }}{% if form.compte_password.field.required %} <span class="text-red-500">*</span>{% endif %}</label>
                 {{ form.compte_password }}
+                {% if form.compte_password.help_text %}<p class="text-xs text-slate-500 mt-1">{{ form.compte_password.help_text }}</p>{% endif %}
                 {% if form.compte_password.errors %}<p class="text-xs text-red-600 mt-1">{{ form.compte_password.errors|striptags }}</p>{% endif %}
-                <p class="text-xs text-slate-500 mt-1">{{ form.compte_password.help_text }}</p>
             </div>
         </div>
     </div>

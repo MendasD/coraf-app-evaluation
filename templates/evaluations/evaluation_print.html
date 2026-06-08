@@ -137,9 +137,6 @@
 
         <!-- 2. PRINCIPAUX FAITS MARQUANTS -->
         <h2 class="section">2. Principaux faits marquants</h2>
-        {% if evaluation.faits_marquants %}
-        <div class="block">{{ evaluation.faits_marquants }}</div>
-        {% else %}
         <table class="preprint-table">
             <thead>
                 <tr>
@@ -149,12 +146,19 @@
                 </tr>
             </thead>
             <tbody>
+                {% for fm in evaluation.faits_marquants_lignes.all %}
+                <tr>
+                    <td>{{ fm.ordre }}</td>
+                    <td style="font-weight:600">{{ fm.fait }}</td>
+                    <td>{{ fm.observation }}</td>
+                </tr>
+                {% empty %}
                 <tr><td>1</td><td></td><td></td></tr>
                 <tr><td>2</td><td></td><td></td></tr>
                 <tr><td>3</td><td></td><td></td></tr>
+                {% endfor %}
             </tbody>
         </table>
-        {% endif %}
 
         <!-- 3. BILAN DES OBJECTIFS -->
         <h2 class="section">3. Bilan des objectifs</h2>
@@ -326,7 +330,7 @@
                 <div class="meta" style="margin-top:4px">Date :</div>
             </div>
             <div class="sign">
-                <div class="lbl">Signature du N+1 / évaluateur</div>
+                <div class="lbl">Signature de l'évaluateur</div>
                 <div class="meta">{{ evaluation.evaluateur|default:evaluation.responsable_hierarchique|default:"" }}</div>
                 <div class="meta" style="margin-top:4px">Date :</div>
             </div>

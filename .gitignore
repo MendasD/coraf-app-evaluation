@@ -23,7 +23,8 @@ Thumbs.db
 # Source documents (gardés hors VCS par défaut, données nominatives)
 *.docx
 *.xlsx
-unpacked_form/
+unpacked_*/
 form_extract.md
+.npm-cache/
 
 node_modules/

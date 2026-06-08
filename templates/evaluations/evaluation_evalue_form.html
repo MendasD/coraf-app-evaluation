@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block heading %}Ma saisie — Évaluation du {{ evaluation.date_evaluation|date:"d/m/Y" }}{% endblock %}
+{% block heading %}Ma saisie · Évaluation du {{ evaluation.date_evaluation|date:"d/m/Y" }}{% endblock %}
 
 {% block content %}
 {% if locked %}
@@ -7,67 +7,189 @@
     <i data-lucide="lock" class="w-4 h-4 mt-0.5"></i>
     <div>
         <div class="font-semibold">Saisie verrouillée</div>
-        <div>L'évaluateur a soumis cette évaluation. Vous ne pouvez plus modifier vos parties.</div>
+        <div>Cette évaluation est désormais entre les mains de votre évaluateur. Vous pouvez la consulter mais plus la modifier.</div>
     </div>
 </div>
 {% else %}
-<div class="rounded-xl bg-coraf-50 border border-coraf-200 text-coraf-800 px-4 py-3 text-sm mb-5 flex items-start gap-2">
-    <i data-lucide="info" class="w-4 h-4 mt-0.5"></i>
-    <div>
-        Vous remplissez ici vos propres parties de l'évaluation : faits marquants, initiatives personnelles
-        et commentaires sur les objectifs. L'évaluateur travaille en parallèle de son côté.
+<div class="rounded-2xl bg-coraf-50 border border-coraf-200 text-coraf-900 px-4 py-3.5 mb-5 flex items-start gap-3">
+    <i data-lucide="info" class="w-5 h-5 mt-0.5 shrink-0 text-coraf-700"></i>
+    <div class="text-sm">
+        <div class="font-semibold">Comment ça marche</div>
+        <p class="text-coraf-800/90 mt-0.5">
+            Remplissez vos <strong>faits marquants</strong>, vos <strong>initiatives personnelles</strong>,
+            puis pour chaque objectif notez votre <strong>taux d'atteinte</strong> et ajoutez un commentaire si besoin.
+            Quand vous estimez avoir fini, cliquez sur <strong>Soumettre à l'évaluateur</strong> : la fiche partira
+            chez votre évaluateur attitré et vous ne pourrez plus la modifier (vous pourrez quand même la consulter).
+            Vous pouvez aussi enregistrer en brouillon autant de fois que nécessaire avant de soumettre.
+        </p>
     </div>
 </div>
 {% endif %}
 
-<form method="post" class="space-y-5 max-w-5xl">
+<form method="post" x-data class="space-y-5 max-w-5xl pb-32">
     {% csrf_token %}
 
+    <!-- 1. Identification (responsable hiérarchique + évaluateur en lecture seule) -->
     <section class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
-        <h2 class="font-semibold text-slate-900 mb-4 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-coraf-700"></i> Principaux faits marquants</h2>
-        <p class="text-xs text-slate-500 mb-2">Les éléments les plus saillants de votre période (réalisations, événements, contexte).</p>
-        {{ form.faits_marquants }}
+        <h2 class="font-semibold text-slate-900 mb-3 flex items-center gap-2"><i data-lucide="id-card" class="w-4 h-4 text-coraf-700"></i> Identification</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ form.responsable_hierarchique.label }}</label>
+                {{ form.responsable_hierarchique }}
+                <p class="text-xs text-slate-500 mt-1">Le nom de votre responsable hiérarchique ou point focal pour cette période.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">Évaluateur attitré</label>
+                <input type="text" value="{{ nom_evaluateur }}" readonly tabindex="-1"
+                       class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 cursor-not-allowed">
+                <p class="text-xs text-slate-500 mt-1">Préchargé depuis votre profil. Pour le modifier, contactez un administrateur.</p>
+            </div>
+        </div>
     </section>
 
+    <!-- 2. Mes faits marquants (tableau Fait / Observations) -->
     <section class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
-        <h2 class="font-semibold text-slate-900 mb-4 flex items-center gap-2"><i data-lucide="rocket" class="w-4 h-4 text-coraf-700"></i> Initiatives personnelles</h2>
+        <h2 class="font-semibold text-slate-900 mb-3 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-coraf-700"></i> Principaux faits marquants</h2>
+        <p class="text-xs text-slate-500 mb-3">Listez les éléments saillants de votre période. Pour chaque fait, vous pouvez ajouter une observation.</p>
+
+        {{ faits_formset.management_form }}
+        <div class="space-y-3">
+            <div class="grid grid-cols-12 gap-3 text-[11px] uppercase tracking-wider font-semibold text-slate-500 px-1">
+                <div class="col-span-1">N°</div>
+                <div class="col-span-6">Fait marquant</div>
+                <div class="col-span-5">Observations</div>
+            </div>
+            {% for f in faits_formset %}
+            <div class="fait-row grid grid-cols-12 gap-3 items-start border border-slate-200 rounded-xl p-3 bg-slate-50/30">
+                {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                <div class="col-span-1">{{ f.ordre }}</div>
+                <div class="col-span-6">{{ f.fait }}</div>
+                <div class="col-span-5 relative">
+                    {{ f.observation }}
+                    <label class="absolute -top-2 right-1 inline-flex items-center gap-1 text-[10px] text-red-500 hover:text-red-700 bg-white px-1.5 py-0.5 rounded cursor-pointer">
+                        {{ f.DELETE }} <i data-lucide="trash-2" class="w-3 h-3"></i> Retirer
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" onclick="addFaitRow()" class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-coraf-700 hover:text-coraf-900">
+            <i data-lucide="plus" class="w-4 h-4"></i> Ajouter une ligne
+        </button>
+        <template id="empty-fait-form">
+            <div class="fait-row grid grid-cols-12 gap-3 items-start border border-slate-200 rounded-xl p-3 bg-slate-50/30">
+                <div class="col-span-1">{{ faits_formset.empty_form.ordre }}</div>
+                <div class="col-span-6">{{ faits_formset.empty_form.fait }}</div>
+                <div class="col-span-5 relative">
+                    {{ faits_formset.empty_form.observation }}
+                    <label class="absolute -top-2 right-1 inline-flex items-center gap-1 text-[10px] text-red-500 hover:text-red-700 bg-white px-1.5 py-0.5 rounded cursor-pointer">
+                        {{ faits_formset.empty_form.DELETE }} <i data-lucide="trash-2" class="w-3 h-3"></i> Retirer
+                    </label>
+                </div>
+            </div>
+        </template>
+    </section>
+
+    <!-- 2. Mes initiatives personnelles -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+        <h2 class="font-semibold text-slate-900 mb-3 flex items-center gap-2"><i data-lucide="rocket" class="w-4 h-4 text-coraf-700"></i> Initiatives personnelles</h2>
         <p class="text-xs text-slate-500 mb-2">Démarches, projets ou apprentissages que vous avez initiés en plus de vos objectifs.</p>
         {{ form.initiatives_personnelles }}
     </section>
 
+    <!-- 3. Mes notes par objectif -->
     <section class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
-        <div class="mb-4">
-            <h2 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="message-square" class="w-4 h-4 text-coraf-700"></i> Vos commentaires par objectif</h2>
-            <p class="text-xs text-slate-500 mt-1">Vous ne pouvez pas modifier les objectifs ni les notes ; seul votre commentaire est éditable.</p>
-        </div>
+        <h2 class="font-semibold text-slate-900 mb-3 flex items-center gap-2"><i data-lucide="target" class="w-4 h-4 text-coraf-700"></i> Mes objectifs</h2>
+        <p class="text-xs text-slate-500 mb-4">Pour chaque objectif de votre unité, indiquez votre <strong>taux d'atteinte</strong> (de 0 à 100 %) et ajoutez un commentaire de votre côté. Votre évaluateur pourra ajuster ces notes ensuite.</p>
+
         {{ formset.management_form }}
         <div class="space-y-4">
             {% for f in formset %}
-            <div class="border border-slate-200 rounded-xl p-4 sm:p-5 bg-slate-50/30">
+            <div class="objectif-row border border-slate-200 rounded-xl p-4 sm:p-5 bg-slate-50/30">
                 {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
                 {% with obj=f.instance %}
                 <div class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Objectif {{ obj.numero }}</div>
-                <div class="font-medium text-slate-900">{{ obj.titre|default:obj.description|truncatewords:14 }}</div>
+                <div class="font-medium text-slate-900">{{ obj.titre|default:obj.description|truncatewords:20 }}</div>
                 {% if obj.description and obj.titre %}<div class="text-sm text-slate-600 mt-1 whitespace-pre-line">{{ obj.description }}</div>{% endif %}
                 {% if obj.livrables %}<div class="text-xs text-slate-500 italic mt-1">Livrables : {{ obj.livrables }}</div>{% endif %}
-                <div class="text-xs text-slate-500 mt-2">Coefficient {{ obj.coefficient }} · Taux d'atteinte évalué : {{ obj.taux_atteinte }} %</div>
-                <div class="mt-3">
-                    <label class="block text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Votre commentaire</label>
-                    {{ f.commentaire_evalue }}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                    <div>
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-coraf-700 mb-1">Votre taux d'atteinte (%) <span class="text-red-500">*</span></label>
+                        {{ f.taux_atteinte }}
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[11px] uppercase tracking-wider font-semibold text-coraf-700 mb-1">Votre commentaire</label>
+                        {{ f.commentaire_evalue }}
+                    </div>
                 </div>
                 {% endwith %}
             </div>
             {% endfor %}
+            {% if not formset %}
+            <div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 text-sm">
+                Aucun objectif n'est défini pour votre unité. Contactez l'administrateur.
+            </div>
+            {% endif %}
         </div>
     </section>
 
+    <!-- Bandeau bas : indicateur + boutons -->
     {% if not locked %}
-    <div class="flex gap-3">
-        <button type="submit" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition">
-            <i data-lucide="save" class="w-4 h-4"></i> Enregistrer mes saisies
-        </button>
-        <a href="{{ evaluation.get_absolute_url }}" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">Annuler</a>
+    <div class="fixed bottom-4 inset-x-4 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:max-w-3xl lg:ml-auto z-40 no-print">
+        <div class="bg-gradient-to-r from-coraf-700 to-coraf-800 text-white rounded-2xl shadow-elevated p-4 sm:p-5 flex items-center gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+                <div class="text-[11px] uppercase tracking-wider text-coraf-100/80 font-semibold">Votre auto-évaluation</div>
+                <div class="text-2xl sm:text-3xl font-bold leading-tight"><span id="global-note">0.00</span> %</div>
+                <div class="text-[11px] text-coraf-100/80 mt-0.5">Cette note est indicative ; votre évaluateur pourra l'ajuster.</div>
+            </div>
+            <button type="submit" name="action" value="draft" class="inline-flex items-center gap-2 bg-white/15 hover:bg-white/20 text-white border border-white/20 px-4 py-2.5 rounded-lg font-medium transition text-sm">
+                <i data-lucide="save" class="w-4 h-4"></i> Enregistrer en brouillon
+            </button>
+            <button type="submit" name="action" value="submit"
+                    onclick="return confirm('Une fois soumise, vous ne pourrez plus modifier cette évaluation. Confirmer ?')"
+                    class="inline-flex items-center gap-2 bg-white text-coraf-800 hover:bg-coraf-50 px-4 sm:px-5 py-2.5 rounded-lg font-semibold shadow-sm transition text-sm">
+                <i data-lucide="send" class="w-4 h-4"></i> Soumettre à l'évaluateur
+            </button>
+        </div>
     </div>
     {% endif %}
 </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addFaitRow() {
+    const totalForms = document.querySelector('#id_faits_marquants_lignes-TOTAL_FORMS');
+    if (!totalForms) return;
+    const idx = parseInt(totalForms.value);
+    const tpl = document.getElementById('empty-fait-form').innerHTML.replace(/__prefix__/g, idx);
+    const wrap = document.createElement('div');
+    wrap.innerHTML = tpl.trim();
+    // Insère avant le bouton "Ajouter une ligne"
+    const container = document.querySelector('.fait-row');
+    if (container && container.parentNode) {
+        container.parentNode.appendChild(wrap.firstChild);
+    }
+    totalForms.value = idx + 1;
+    if (window.lucide) lucide.createIcons();
+}
+
+function recalcEvalueNote() {
+    const rows = document.querySelectorAll('.objectif-row');
+    let sumTaux = 0, count = 0;
+    rows.forEach(row => {
+        const taux = parseFloat(row.querySelector('.taux-input')?.value) || 0;
+        sumTaux += taux;
+        count += 1;
+    });
+    const noteEl = document.getElementById('global-note');
+    if (noteEl) {
+        noteEl.textContent = count > 0 ? (sumTaux / count).toFixed(2) : '0.00';
+    }
+}
+document.addEventListener('input', e => {
+    if (e.target.matches('.taux-input')) recalcEvalueNote();
+});
+document.addEventListener('DOMContentLoaded', recalcEvalueNote);
+</script>
 {% endblock %}

@@ -44,6 +44,10 @@
                     <i data-lucide="clipboard-list"></i>
                     <span class="sb-label">Mes évaluations</span>
                 </a>
+                <a href="{% url 'evaluations:audit_log' %}" class="sb-link {% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
+                    <i data-lucide="history"></i>
+                    <span class="sb-label">Mon activité</span>
+                </a>
             {% else %}
                 {# === Menu évaluateur / admin === #}
                 <a href="{{ u_dash }}" class="sb-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
@@ -54,9 +58,9 @@
                     <i data-lucide="users"></i>
                     <span class="sb-label">Collaborateurs</span>
                 </a>
-                <a href="{{ u_eval_new }}" class="sb-link {% if request.resolver_match.url_name == 'evaluation_create' %}active{% endif %}">
-                    <i data-lucide="clipboard-pen-line"></i>
-                    <span class="sb-label">Nouvelle évaluation</span>
+                <a href="{% url 'evaluations:audit_log' %}" class="sb-link {% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
+                    <i data-lucide="history"></i>
+                    <span class="sb-label">Journal d'activité</span>
                 </a>
             {% endif %}
 
@@ -90,9 +94,9 @@
                     <div class="text-[10px] uppercase tracking-wider text-coraf-100/60 mt-0.5">Évaluateur</div>
                 {% endif %}
             </div>
-            <a href="{% url 'password_change' %}" class="sb-link">
-                <i data-lucide="key-round"></i>
-                <span class="sb-label">Mot de passe</span>
+            <a href="{% url 'evaluations:mon_compte' %}" class="sb-link {% if request.resolver_match.url_name == 'mon_compte' %}active{% endif %}">
+                <i data-lucide="user-circle"></i>
+                <span class="sb-label">Mon compte</span>
             </a>
             <form method="post" action="{% url 'logout' %}" class="px-0">
                 {% csrf_token %}

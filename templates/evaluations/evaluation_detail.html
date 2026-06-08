@@ -45,6 +45,16 @@
         </button>
     </form>
     {% endif %}
+
+    {% if is_admin %}
+    <form method="post" action="{% url 'evaluations:evaluation_delete' evaluation.uuid %}" class="inline"
+          onsubmit="return confirm('Supprimer définitivement cette évaluation ? Cette action est irréversible.');">
+        {% csrf_token %}
+        <button type="submit" class="inline-flex items-center gap-2 bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition" title="Supprimer définitivement cette évaluation">
+            <i data-lucide="trash-2" class="w-4 h-4"></i> <span class="hidden sm:inline">Supprimer</span>
+        </button>
+    </form>
+    {% endif %}
 {% endif %}
 {% endblock %}
 
@@ -162,15 +172,35 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
-        <h3 class="font-semibold text-slate-900 mb-2 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-coraf-700"></i> Faits marquants <span class="text-xs font-normal text-slate-400">(rempli par l'évalué)</span></h3>
-        <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{{ evaluation.faits_marquants|default:"Non renseigné" }}</p>
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden mb-5">
+    <div class="px-5 py-4 border-b border-slate-200">
+        <h3 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-coraf-700"></i> Principaux faits marquants <span class="text-xs font-normal text-slate-400">(rempli par l'évalué)</span></h3>
     </div>
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
-        <h3 class="font-semibold text-slate-900 mb-2 flex items-center gap-2"><i data-lucide="rocket" class="w-4 h-4 text-coraf-700"></i> Initiatives personnelles <span class="text-xs font-normal text-slate-400">(rempli par l'évalué)</span></h3>
-        <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{{ evaluation.initiatives_personnelles|default:"Non renseigné" }}</p>
-    </div>
+    <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 text-left text-xs uppercase tracking-wider">
+            <tr>
+                <th class="px-4 py-2 font-semibold w-12">N°</th>
+                <th class="px-4 py-2 font-semibold w-1/2">Fait marquant</th>
+                <th class="px-4 py-2 font-semibold">Observations</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for fm in evaluation.faits_marquants_lignes.all %}
+            <tr>
+                <td class="px-4 py-3 text-slate-500 font-medium">{{ fm.ordre }}</td>
+                <td class="px-4 py-3 text-slate-800 whitespace-pre-line align-top font-medium">{{ fm.fait|default:"" }}</td>
+                <td class="px-4 py-3 text-slate-600 whitespace-pre-line align-top">{{ fm.observation|default:"" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="px-4 py-8 text-center text-slate-400 italic">Aucun fait marquant renseigné.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-5">
+    <h3 class="font-semibold text-slate-900 mb-2 flex items-center gap-2"><i data-lucide="rocket" class="w-4 h-4 text-coraf-700"></i> Initiatives personnelles <span class="text-xs font-normal text-slate-400">(rempli par l'évalué)</span></h3>
+    <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{{ evaluation.initiatives_personnelles|default:"Non renseigné" }}</p>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">

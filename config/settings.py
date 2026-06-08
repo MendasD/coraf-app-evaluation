@@ -69,6 +69,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    # Rend request.user accessible aux signaux d'audit
+    "evaluations.audit.CurrentUserMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
