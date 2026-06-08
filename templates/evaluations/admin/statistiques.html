@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block heading %}Administration · Statistiques{% endblock %}
+
+{% block content %}
+{% include "evaluations/admin/_admin_tabs.html" %}
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <div class="flex items-center gap-3 mb-2">
+            <span class="w-9 h-9 rounded-xl bg-coraf-50 text-coraf-700 inline-flex items-center justify-center"><i data-lucide="clipboard-list" class="w-5 h-5"></i></span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Évaluations totales</span>
+        </div>
+        <div class="text-3xl font-bold text-slate-900 leading-none">{{ nb_evals_total }}</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <div class="flex items-center gap-3 mb-2">
+            <span class="w-9 h-9 rounded-xl bg-coraf-50 text-coraf-700 inline-flex items-center justify-center"><i data-lucide="check-circle-2" class="w-5 h-5"></i></span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Évaluations finalisées</span>
+        </div>
+        <div class="text-3xl font-bold text-slate-900 leading-none">{{ nb_evals_finalisees }}</div>
+        <div class="text-xs text-slate-500 mt-1">Validées et visées RH</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <div class="flex items-center gap-3 mb-2">
+            <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 inline-flex items-center justify-center"><i data-lucide="layers" class="w-5 h-5"></i></span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Unités actives</span>
+        </div>
+        <div class="text-3xl font-bold text-slate-900 leading-none">{{ moyennes|length }}</div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h2 class="font-semibold text-slate-900 mb-1 flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4 text-coraf-700"></i> Note moyenne par unité</h2>
+        <p class="text-xs text-slate-500 mb-3">Calculée sur les évaluations validées et visées RH.</p>
+        <div class="relative h-72"><canvas id="chart-moyennes"></canvas></div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h2 class="font-semibold text-slate-900 mb-1 flex items-center gap-2"><i data-lucide="pie-chart" class="w-4 h-4 text-coraf-700"></i> Distribution des appréciations</h2>
+        <p class="text-xs text-slate-500 mb-3">Sur l'ensemble des évaluations finalisées.</p>
+        <div class="relative h-72"><canvas id="chart-distribution"></canvas></div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <h2 class="font-semibold text-slate-900 mb-1 flex items-center gap-2"><i data-lucide="layers-2" class="w-4 h-4 text-coraf-700"></i> Évaluations par statut</h2>
+        <p class="text-xs text-slate-500 mb-3">Toutes évaluations confondues.</p>
+        <div class="relative h-64"><canvas id="chart-statuts"></canvas></div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-200">
+            <h2 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="list" class="w-4 h-4 text-slate-500"></i> Détail par unité</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-500 text-left text-xs uppercase tracking-wider">
+                    <tr>
+                        <th class="px-5 py-3 font-semibold">Unité</th>
+                        <th class="px-5 py-3 font-semibold text-right">Évals finalisées</th>
+                        <th class="px-5 py-3 font-semibold text-right">Moyenne</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for m in moyennes %}
+                    <tr>
+                        <td class="px-5 py-3 font-medium text-slate-900">{{ m.unite.libelle }}</td>
+                        <td class="px-5 py-3 text-right text-slate-600">{{ m.nb }}</td>
+                        <td class="px-5 py-3 text-right font-semibold {% if m.moyenne is None %}text-slate-300{% else %}text-slate-900{% endif %}">
+                            {% if m.moyenne is not None %}{{ m.moyenne }} %{% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const moyennes = {{ moyennes_json|safe }};
+const distribution = {{ distribution_json|safe }};
+const statuts = {{ statuts_json|safe }};
+
+if (moyennes.labels.length) {
+    new Chart(document.getElementById('chart-moyennes'), {
+        type: 'bar',
+        data: {
+            labels: moyennes.labels,
+            datasets: [{
+                label: 'Note moyenne (%)',
+                data: moyennes.values,
+                backgroundColor: 'rgba(63,119,35,0.7)',
+                borderColor: '#3f7723',
+                borderWidth: 1,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + ' %' } } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.parsed.y} % (${moyennes.counts[ctx.dataIndex]} éval${moyennes.counts[ctx.dataIndex] > 1 ? 's' : ''})`
+                    }
+                }
+            }
+        }
+    });
+}
+
+if (distribution.labels.length) {
+    new Chart(document.getElementById('chart-distribution'), {
+        type: 'doughnut',
+        data: {
+            labels: distribution.labels,
+            datasets: [{
+                data: distribution.values,
+                backgroundColor: distribution.colors,
+                borderWidth: 2,
+                borderColor: '#fff',
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } } }
+        }
+    });
+}
+
+if (statuts.labels.length) {
+    new Chart(document.getElementById('chart-statuts'), {
+        type: 'bar',
+        data: {
+            labels: statuts.labels,
+            datasets: [{
+                label: 'Nombre',
+                data: statuts.values,
+                backgroundColor: ['#94a3b8', '#f59e0b', '#22c55e', '#0f7b3f'],
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+</script>
+{% endblock %}

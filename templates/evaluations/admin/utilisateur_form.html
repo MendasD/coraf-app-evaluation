@@ -5,6 +5,21 @@
 {% include "evaluations/admin/_admin_tabs.html" %}
 
 <div class="max-w-2xl">
+    {% if not is_create and utilisateur.profil_collaborateur %}
+    <div class="rounded-2xl bg-coraf-50 border border-coraf-200 text-coraf-900 px-4 py-3.5 mb-5 flex items-start gap-3">
+        <i data-lucide="info" class="w-5 h-5 mt-0.5 shrink-0 text-coraf-700"></i>
+        <div class="flex-1 min-w-0 text-sm">
+            <div class="font-semibold">Cet utilisateur est un collaborateur évalué</div>
+            <p class="mt-0.5">Pour modifier son <strong>unité</strong>, son <strong>évaluateur attitré</strong>, son poste ou sa direction, passez par la fiche collaborateur.</p>
+            <a href="{% url 'evaluations:collaborateur_edit' utilisateur.profil_collaborateur.uuid %}"
+               class="inline-flex items-center gap-1.5 mt-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition">
+                <i data-lucide="user-cog" class="w-4 h-4"></i>
+                Modifier le profil collaborateur
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
     <form method="post" class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 space-y-4">
         {% csrf_token %}
 

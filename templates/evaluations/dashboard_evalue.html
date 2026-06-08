@@ -14,12 +14,107 @@
         </div>
     </div>
     <p class="text-sm text-coraf-100/90 mt-5 max-w-3xl">
-        Vous trouverez ci-dessous les évaluations vous concernant. Pour chacune, vous pouvez compléter
-        <strong>vos faits marquants</strong>, vos <strong>initiatives personnelles</strong> et un
-        <strong>commentaire par objectif</strong>, tant que l'évaluation est en <strong>Brouillon</strong>.
-        Une fois soumise par l'évaluateur, votre saisie est verrouillée.
+        C'est ici que vous démarrez vos évaluations. Vous remplissez vos faits marquants,
+        initiatives personnelles, et vous notez vos objectifs. Une fois soumise, votre
+        évaluateur reprend la main pour valider.
     </p>
+
+    <div class="mt-5 flex flex-wrap gap-3">
+        {% if eval_en_cours %}
+            <a href="{% url 'evaluations:evaluation_evalue_edit' eval_en_cours.uuid %}"
+               class="inline-flex items-center gap-2 bg-white text-coraf-800 hover:bg-coraf-50 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+                Reprendre mon évaluation en cours
+            </a>
+            <span class="inline-flex items-center gap-1.5 text-xs text-coraf-100/80 px-3 py-2.5 bg-white/10 rounded-lg">
+                <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                Une seule évaluation à la fois. Terminez celle-ci avant d'en démarrer une autre.
+            </span>
+        {% elif unite_sans_objectifs %}
+            <button type="button" disabled
+                    class="inline-flex items-center gap-2 bg-white/30 text-white/70 text-sm font-semibold px-4 py-2.5 rounded-lg cursor-not-allowed">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+                Démarrer une nouvelle évaluation
+            </button>
+            <span class="inline-flex items-center gap-1.5 text-xs text-amber-200 px-3 py-2.5 bg-amber-500/20 rounded-lg max-w-md">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+                Les objectifs n'ont pas encore été configurés pour votre unité. Veuillez vous rapprocher de votre évaluateur ou d'un administrateur.
+            </span>
+        {% else %}
+            <a href="{% url 'evaluations:evaluation_start' %}"
+               class="inline-flex items-center gap-2 bg-white text-coraf-800 hover:bg-coraf-50 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                Démarrer une nouvelle évaluation
+            </a>
+        {% endif %}
+    </div>
 </div>
+
+{# === KPI personnels + courbe d'évolution si des évals sont validées === #}
+{% if nb_evals_finalisees %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <div class="flex items-center gap-3 mb-2">
+            <span class="w-9 h-9 rounded-xl bg-coraf-50 text-coraf-700 inline-flex items-center justify-center"><i data-lucide="check-circle-2" class="w-5 h-5"></i></span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Évaluations finalisées</span>
+        </div>
+        <div class="text-3xl font-bold text-slate-900 leading-none">{{ nb_evals_finalisees }}</div>
+    </div>
+    {% if derniere_finalisee %}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+        <div class="flex items-center gap-3 mb-2">
+            <span class="w-9 h-9 rounded-xl bg-coraf-50 text-coraf-700 inline-flex items-center justify-center"><i data-lucide="trending-up" class="w-5 h-5"></i></span>
+            <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Dernière note</span>
+        </div>
+        <div class="text-3xl font-bold text-coraf-700 leading-none">{{ derniere_finalisee.note_globale }} %</div>
+        <div class="text-xs text-slate-500 mt-1">au {{ derniere_finalisee.date_evaluation|date:"d/m/Y" }}</div>
+    </div>
+    {% with appr=derniere_finalisee.appreciation %}
+    {% if appr %}
+    <div class="rounded-2xl shadow-card p-5 text-white" style="background-color: {{ appr.couleur }}">
+        <div class="flex items-center gap-3 mb-2">
+            <span class="w-9 h-9 rounded-xl bg-white/20 inline-flex items-center justify-center"><i data-lucide="award" class="w-5 h-5"></i></span>
+            <span class="text-xs uppercase tracking-wider opacity-80 font-semibold">Dernière appréciation</span>
+        </div>
+        <div class="text-3xl font-bold leading-none">{{ appr.libelle }}</div>
+    </div>
+    {% endif %}
+    {% endwith %}
+    {% endif %}
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-6">
+    <h2 class="font-semibold text-slate-900 mb-1 flex items-center gap-2"><i data-lucide="line-chart" class="w-4 h-4 text-coraf-700"></i> Évolution de ma note globale</h2>
+    <p class="text-xs text-slate-500 mb-3">Calculée à partir des évaluations validées et visées RH.</p>
+    <div class="relative h-64"><canvas id="mon-evolution"></canvas></div>
+</div>
+{% endif %}
+
+{# === Mes objectifs de l'unité === #}
+{% if objectifs_unite %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden mb-6">
+    <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
+        <h2 class="font-semibold text-slate-900 flex items-center gap-2"><i data-lucide="target" class="w-4 h-4 text-coraf-700"></i> Mes objectifs <span class="text-xs font-normal text-slate-500">({{ profil_collab.unite.libelle }})</span></h2>
+        <span class="text-xs text-slate-500">Vous serez évalué(e) sur ces {{ objectifs_unite|length }} objectif{{ objectifs_unite|length|pluralize }}</span>
+    </div>
+    <div class="divide-y divide-slate-100">
+        {% for o in objectifs_unite %}
+        <div class="px-5 py-3.5">
+            <div class="flex items-start gap-3">
+                <span class="w-7 h-7 rounded-full bg-coraf-50 text-coraf-700 inline-flex items-center justify-center text-sm font-bold shrink-0">{{ forloop.counter }}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-slate-900">{{ o.titre }}</div>
+                    <div class="text-sm text-slate-600 mt-0.5">{{ o.description|truncatewords:25 }}</div>
+                    {% if o.livrables %}<div class="text-xs text-slate-500 italic mt-1">Livrables : {{ o.livrables|truncatewords:18 }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<h2 class="font-semibold text-slate-900 mb-3">Historique de mes évaluations</h2>
 
 {% if evaluations %}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -44,13 +139,23 @@
 
         {% if ev.statut == Statut.BROUILLON %}
         <div class="rounded-lg bg-amber-50/60 border border-amber-100 text-amber-900 px-3 py-2 text-xs mb-4 flex items-start gap-2">
-            <i data-lucide="info" class="w-3.5 h-3.5 mt-0.5"></i>
-            <span>Vous pouvez compléter vos parties. Quand vous estimez avoir fini, l'évaluateur soumettra l'évaluation pour la finaliser.</span>
+            <i data-lucide="pencil" class="w-3.5 h-3.5 mt-0.5"></i>
+            <span><strong>En cours de saisie.</strong> Continuez à remplir vos parties, puis soumettez à votre évaluateur quand c'est prêt.</span>
+        </div>
+        {% elif ev.statut == Statut.SOUMISE %}
+        <div class="rounded-lg bg-blue-50 border border-blue-200 text-blue-900 px-3 py-2 text-xs mb-4 flex items-start gap-2">
+            <i data-lucide="hourglass" class="w-3.5 h-3.5 mt-0.5"></i>
+            <span><strong>En attente de validation par votre évaluateur.</strong> Vous serez notifié(e) dès qu'il aura validé. Vous pouvez consulter la fiche mais plus la modifier.</span>
+        </div>
+        {% elif ev.statut == Statut.VALIDEE %}
+        <div class="rounded-lg bg-coraf-50 border border-coraf-200 text-coraf-900 px-3 py-2 text-xs mb-4 flex items-start gap-2">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 mt-0.5"></i>
+            <span><strong>Validée par votre évaluateur</strong> le {{ ev.date_modification|date:"d/m/Y" }}. Vous pouvez consulter le détail de la fiche.</span>
         </div>
         {% else %}
-        <div class="rounded-lg bg-slate-50 border border-slate-100 text-slate-700 px-3 py-2 text-xs mb-4 flex items-start gap-2">
-            <i data-lucide="lock" class="w-3.5 h-3.5 mt-0.5"></i>
-            <span>Évaluation verrouillée. Vous pouvez consulter la fiche mais plus modifier vos parties.</span>
+        <div class="rounded-lg bg-coraf-50 border border-coraf-200 text-coraf-900 px-3 py-2 text-xs mb-4 flex items-start gap-2">
+            <i data-lucide="stamp" class="w-3.5 h-3.5 mt-0.5"></i>
+            <span><strong>Visa RH apposé</strong> le {{ ev.date_modification|date:"d/m/Y" }}. Évaluation finalisée et archivée.</span>
         </div>
         {% endif %}
 
@@ -72,7 +177,29 @@
 <div class="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
     <i data-lucide="inbox" class="w-10 h-10 mx-auto text-slate-300 mb-3"></i>
     <div class="font-semibold text-slate-700">Aucune évaluation pour le moment</div>
-    <p class="text-sm text-slate-500 mt-1">Vous serez notifié(e) dès qu'un évaluateur démarrera une évaluation vous concernant.</p>
+    <p class="text-sm text-slate-500 mt-1">Démarrez votre première évaluation depuis le bouton en haut.</p>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const evo = {{ evolution_json|default:"null"|safe }};
+if (evo && evo.labels && evo.labels.length) {
+    new Chart(document.getElementById('mon-evolution'), {
+        type: 'line',
+        data: { labels: evo.labels, datasets: [{
+            label: 'Note globale (%)', data: evo.notes,
+            borderColor: '#3f7723', backgroundColor: 'rgba(63,119,35,0.12)',
+            pointBackgroundColor: '#3f7723', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 5,
+            tension: 0.35, fill: true, borderWidth: 2.5
+        }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { suggestedMin: 0, suggestedMax: 100, grid: { color: '#f1f5f9' }, ticks: { callback: v => v + ' %' } }, x: { grid: { display: false } } },
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', padding: 10, callbacks: { label: ctx => ` ${ctx.parsed.y} %` } } }
+        }
+    });
+}
+</script>
 {% endblock %}

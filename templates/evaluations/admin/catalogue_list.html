@@ -2,7 +2,7 @@
 {% block heading %}Administration · Catalogue d'objectifs{% endblock %}
 
 {% block topbar_actions %}
-<a href="{% url 'evaluations:admin_objectif_create' %}" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
+<a href="{% url 'evaluations:admin_objectif_create' %}{% if unite_active %}?unite={{ unite_active.code }}{% endif %}" class="inline-flex items-center gap-2 bg-coraf-700 hover:bg-coraf-800 text-white text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition">
     <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Nouvel objectif</span>
 </a>
 {% endblock %}
@@ -12,10 +12,37 @@
 
 <div class="rounded-xl bg-coraf-50 border border-coraf-200 text-coraf-800 px-4 py-3 text-sm mb-5 flex items-start gap-2">
     <i data-lucide="info" class="w-4 h-4 mt-0.5"></i>
-    <span>Les objectifs <strong>actifs</strong> sont automatiquement proposés à chaque nouvelle évaluation, dans l'ordre défini ici. Modifier un objectif ici n'affecte pas les évaluations déjà enregistrées (elles conservent leurs valeurs au moment de la saisie).</span>
+    <span>Les objectifs sont organisés <strong>par unité</strong>. Un évalué démarrant une évaluation se voit proposer automatiquement les objectifs actifs de l'unité à laquelle il est affecté. Modifier un objectif ici n'affecte pas les évaluations déjà saisies.</span>
 </div>
 
-<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+<!-- Filtre par unité -->
+<div class="flex flex-wrap gap-2 mb-5">
+    <a href="{% url 'evaluations:admin_catalogue' %}" class="inline-flex items-center gap-2 text-sm font-medium px-3.5 py-1.5 rounded-full transition
+        {% if not unite_active %}bg-coraf-700 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:border-coraf-300{% endif %}">
+        Toutes les unités
+    </a>
+    {% for u in unites %}
+    <a href="?unite={{ u.code }}" class="inline-flex items-center gap-2 text-sm font-medium px-3.5 py-1.5 rounded-full transition
+        {% if unite_active and unite_active.code == u.code %}bg-coraf-700 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:border-coraf-300{% endif %}">
+        {{ u.libelle }}
+    </a>
+    {% endfor %}
+</div>
+
+{% for grp in groupes %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden mb-5">
+    <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+            <i data-lucide="layers" class="w-4 h-4 text-coraf-700"></i>
+            <h2 class="font-semibold text-slate-900">{% if grp.unite %}{{ grp.unite.libelle }}{% else %}Sans unité (legacy){% endif %}</h2>
+            <span class="text-xs text-slate-500">· {{ grp.objectifs|length }} objectif{{ grp.objectifs|length|pluralize }}</span>
+        </div>
+        {% if grp.unite %}
+        <a href="{% url 'evaluations:admin_objectif_create' %}?unite={{ grp.unite.code }}" class="text-xs font-medium text-coraf-700 hover:text-coraf-900 inline-flex items-center gap-1">
+            <i data-lucide="plus" class="w-3 h-3"></i> Ajouter dans cette unité
+        </a>
+        {% endif %}
+    </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left text-xs uppercase tracking-wider">
@@ -28,7 +55,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-                {% for o in objectifs %}
+                {% for o in grp.objectifs %}
                 <tr class="hover:bg-slate-50 transition">
                     <td class="px-5 py-3 font-medium text-slate-500">{{ o.ordre }}</td>
                     <td class="px-5 py-3">
@@ -52,10 +79,19 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" class="px-5 py-12 text-center text-slate-400">Catalogue vide. Ajoutez le premier objectif.</td></tr>
+                <tr><td colspan="5" class="px-5 py-8 text-center text-slate-400 text-sm italic">
+                    Aucun objectif configuré pour cette unité.
+                    {% if grp.unite %}<a href="{% url 'evaluations:admin_objectif_create' %}?unite={{ grp.unite.code }}" class="text-coraf-700 hover:underline ml-1">Ajouter le premier</a>.{% endif %}
+                </td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+{% empty %}
+<div class="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+    <i data-lucide="layers" class="w-10 h-10 mx-auto text-slate-300 mb-3"></i>
+    <p class="text-slate-500">Aucune unité configurée.</p>
+</div>
+{% endfor %}
 {% endblock %}

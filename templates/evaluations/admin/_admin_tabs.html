@@ -3,6 +3,11 @@
     {% url 'evaluations:admin_utilisateurs' as u_users %}
     {% url 'evaluations:admin_catalogue' as u_cat %}
     {% url 'evaluations:admin_bareme' as u_bar %}
+    {% url 'evaluations:admin_statistiques' as u_stats %}
+    <a href="{{ u_stats }}" class="inline-flex items-center gap-2 text-sm font-medium px-3.5 py-2 rounded-xl transition
+        {% if request.resolver_match.url_name == 'admin_statistiques' %}bg-coraf-50 text-coraf-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Statistiques
+    </a>
     <a href="{{ u_users }}" class="inline-flex items-center gap-2 text-sm font-medium px-3.5 py-2 rounded-xl transition
         {% if 'admin_util' in request.resolver_match.url_name %}bg-coraf-50 text-coraf-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
         <i data-lucide="users-round" class="w-4 h-4"></i> Utilisateurs
