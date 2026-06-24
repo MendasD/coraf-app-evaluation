@@ -346,8 +346,10 @@ def evaluation_evalue_edit(request, eval_uuid):
             faits_formset.save()
             # Action "Soumettre à l'évaluateur" ?
             if request.POST.get("action") == "submit":
+                from django.utils import timezone as _tz
                 evaluation.statut = Evaluation.Statut.SOUMISE
-                evaluation.save(update_fields=["statut"])
+                evaluation.date_soumission = _tz.now()
+                evaluation.save(update_fields=["statut", "date_soumission"])
                 messages.success(
                     request,
                     "Évaluation envoyée à votre évaluateur. Vous ne pourrez plus la modifier."
@@ -402,9 +404,21 @@ def evaluation_change_statut(request, eval_uuid):
         return redirect(evaluation.get_absolute_url())
 
     if target in allowed:
+        from django.utils import timezone as _tz
         ancien = evaluation.statut
         evaluation.statut = target
-        evaluation.save(update_fields=["statut"])
+        update_fields = ["statut"]
+        # Stampe la date de signature correspondant à la transition
+        if target == Evaluation.Statut.SOUMISE and not evaluation.date_soumission:
+            evaluation.date_soumission = _tz.now()
+            update_fields.append("date_soumission")
+        elif target == Evaluation.Statut.VALIDEE and not evaluation.date_validation:
+            evaluation.date_validation = _tz.now()
+            update_fields.append("date_validation")
+        elif target == Evaluation.Statut.VISEE_RH and not evaluation.date_visa_rh:
+            evaluation.date_visa_rh = _tz.now()
+            update_fields.append("date_visa_rh")
+        evaluation.save(update_fields=update_fields)
         labels = dict(Evaluation.Statut.choices)
         AuditLog.log(
             acteur=request.user,

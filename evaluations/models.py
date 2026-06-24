@@ -203,6 +203,11 @@ class Evaluation(models.Model):
         "Statut", max_length=20, choices=Statut.choices, default=Statut.BROUILLON
     )
 
+    # Horodatages de chaque "signature" du workflow (statut -> date)
+    date_soumission = models.DateTimeField("Date de soumission par l'évalué", null=True, blank=True)
+    date_validation = models.DateTimeField("Date de validation par l'évaluateur", null=True, blank=True)
+    date_visa_rh = models.DateTimeField("Date du visa RH", null=True, blank=True)
+
     date_creation = models.DateTimeField(auto_now_add=True)
     date_modification = models.DateTimeField(auto_now=True)
 
