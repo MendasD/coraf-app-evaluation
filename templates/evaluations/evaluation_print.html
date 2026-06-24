@@ -63,9 +63,24 @@
 
         /* Signatures */
         .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
-        .sign { border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 10px; min-height: 78px; font-size: 8.5pt; color: #374151; }
+        .sign { border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 10px; min-height: 88px; font-size: 8.5pt; color: #374151; position: relative; overflow: hidden; }
         .sign .lbl { font-weight: 600; color: #2a4a17; margin-bottom: 4px; font-size: 9pt; }
         .sign .meta { font-size: 8pt; color: #6b7280; }
+        /* Tampons colorés (compacts) — print-color-adjust force l'impression des couleurs */
+        .stamp {
+            display: inline-flex; align-items: center; gap: 5px;
+            margin-top: 6px; padding: 3px 8px; border-radius: 999px;
+            font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em;
+            border: 1.5px solid;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+        .stamp .check { font-size: 8pt; line-height: 1; }
+        .stamp.blue   { color: #1d4ed8; background: #dbeafe; border-color: #3b82f6; }
+        .stamp.green  { color: #15803d; background: #dcfce7; border-color: #22c55e; }
+        .stamp.orange { color: #c2410c; background: #ffedd5; border-color: #f97316; }
+        .sign .signed-date { margin-top: 3px; font-size: 7.5pt; color: #6b7280; }
 
         /* Footer */
         .footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8pt; color: #9ca3af; text-align: center; }
@@ -327,17 +342,39 @@
             <div class="sign">
                 <div class="lbl">Signature de l'évalué</div>
                 <div class="meta">{{ evaluation.collaborateur.nom_complet }}</div>
+                {% if evaluation.date_soumission %}
+                <div class="stamp blue">
+                    <span class="check">&#10003;</span> Signé
+                </div>
+                <div class="signed-date">le {{ evaluation.date_soumission|date:"d/m/Y" }}</div>
+                {% else %}
                 <div class="meta" style="margin-top:4px">Date :</div>
+                {% endif %}
             </div>
             <div class="sign">
                 <div class="lbl">Signature de l'évaluateur</div>
                 <div class="meta">{{ evaluation.evaluateur|default:evaluation.responsable_hierarchique|default:"" }}</div>
+                {% if evaluation.date_validation %}
+                <div class="stamp green">
+                    <span class="check">&#10003;</span> Validé
+                </div>
+                <div class="signed-date">le {{ evaluation.date_validation|date:"d/m/Y" }}</div>
+                {% else %}
                 <div class="meta" style="margin-top:4px">Date :</div>
+                {% endif %}
             </div>
             <div class="sign">
                 <div class="lbl">Visa Ressources Humaines</div>
+                {% if evaluation.date_visa_rh %}
+                <div class="meta">Visa apposé par l'administration</div>
+                <div class="stamp orange">
+                    <span class="check">&#10003;</span> Visa RH apposé
+                </div>
+                <div class="signed-date">le {{ evaluation.date_visa_rh|date:"d/m/Y" }}</div>
+                {% else %}
                 <div class="meta">Nom et fonction :</div>
                 <div class="meta" style="margin-top:4px">Date :</div>
+                {% endif %}
             </div>
         </div>
 
